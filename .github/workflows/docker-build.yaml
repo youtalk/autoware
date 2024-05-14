@@ -39,7 +39,8 @@ jobs:
       with:
         context: .
         push: true
-        file: docker/autoware-openadk/docker-bake.hcl
+        files: |
+          docker/autoware-openadk/docker-bake.hcl
         targets: default
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
