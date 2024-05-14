@@ -32,7 +32,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v4
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}
+        images: ghcr.io/${{ github.actor }}/${{ github.repository }}
 
     - name: Build and push with Buildx Bake
       uses: docker/bake-action@v4
@@ -43,16 +43,16 @@ jobs:
           docker/autoware-openadk/docker-bake.hcl
         targets: default
         set: |
-          prebuilt.cache-from=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache
-          prebuilt.cache-to=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache,mode=max
+          prebuilt.cache-from=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache
+          prebuilt.cache-to=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache,mode=max
           prebuilt.tags=${{ steps.meta.outputs.tags }}
           prebuilt.labels=${{ steps.meta.outputs.labels }}
-          devel.cache-from=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache
-          devel.cache-to=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache,mode=max
+          devel.cache-from=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache
+          devel.cache-to=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache,mode=max
           devel.tags=${{ steps.meta.outputs.tags }}
           devel.labels=${{ steps.meta.outputs.labels }}
-          runtime.cache-from=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache
-          runtime.cache-to=type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache,mode=max
+          runtime.cache-from=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache
+          runtime.cache-to=type=registry,ref=ghcr.io/${{ github.actor }}/${{ github.repository }}:buildcache,mode=max
           runtime.tags=${{ steps.meta.outputs.tags }}
           runtime.labels=${{ steps.meta.outputs.labels }}
 
