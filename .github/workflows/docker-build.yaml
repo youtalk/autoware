@@ -35,7 +35,7 @@ jobs:
         images: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}
 
     - name: Build and push with Buildx Bake
-      uses: docker/build-push-action@v4
+      uses: docker/bake-action@v4
       with:
         context: .
         push: true
@@ -43,8 +43,6 @@ jobs:
         targets: default
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:buildcache,mode=max
 
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
