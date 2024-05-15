@@ -41,7 +41,10 @@ jobs:
         push: true
         files: |
           docker/autoware-openadk/docker-bake.hcl
-        targets: default
+        targets: |
+          prebuilt
+          devel
+          runtime
         set: |
           prebuilt.args.tags=${{ steps.meta.outputs.tags }}
           prebuilt.args.labels=${{ steps.meta.outputs.labels }}
