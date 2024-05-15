@@ -43,15 +43,9 @@ jobs:
           docker/autoware-openadk/docker-bake.hcl
         targets: |
           prebuilt
-          devel
-          runtime
         set: |
           prebuilt.args.tags=${{ steps.meta.outputs.tags }}
           prebuilt.args.labels=${{ steps.meta.outputs.labels }}
-          devel.args.tags=${{ steps.meta.outputs.tags }}
-          devel.args.labels=${{ steps.meta.outputs.labels }}
-          runtime.args.tags=${{ steps.meta.outputs.tags }}
-          runtime.args.labels=${{ steps.meta.outputs.labels }}
 
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
