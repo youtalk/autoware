@@ -45,7 +45,7 @@ jobs:
         files: |
           docker/autoware-openadk/docker-bake.hcl
         targets: |
-          prebuilt
+          default
         set: |
           *.platform=linux/amd64
           *.args.ROS_DISTRO=humble
