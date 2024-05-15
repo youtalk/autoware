@@ -44,8 +44,9 @@ jobs:
         targets: |
           prebuilt
         set: |
-          prebuilt.args.tags=${{ steps.meta.outputs.tags }}
-          prebuilt.args.labels=${{ steps.meta.outputs.labels }}
+          *.platform=linux/amd64
+          *.tags=${{ steps.meta.outputs.tags }}
+          *.labels=${{ steps.meta.outputs.labels }}
 
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
