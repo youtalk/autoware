@@ -47,7 +47,6 @@ jobs:
           *.platform=linux/amd64
           *.args.ROS_DISTRO=humble
           *.args.BASE_IMAGE=ros:humble-ros-base-jammy
-          *.args.SETUP_ARGS=--no-cuda
           *.args.LIB_DIR=x86_64
 
     - name: Image digest
