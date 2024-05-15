@@ -43,16 +43,10 @@ jobs:
           docker/autoware-openadk/docker-bake.hcl
         targets: default
         set: |
-          prebuilt.cache-from=type=registry,ref=ghcr.io/youtalk/autoware:buildcache
-          prebuilt.cache-to=type=registry,ref=ghcr.io/youtalk/autoware:buildcache,mode=max
           prebuilt.tags=${{ steps.meta.outputs.tags }}
           prebuilt.labels=${{ steps.meta.outputs.labels }}
-          devel.cache-from=type=registry,ref=ghcr.io/youtalk/autoware:buildcache
-          devel.cache-to=type=registry,ref=ghcr.io/youtalk/autoware:buildcache,mode=max
           devel.tags=${{ steps.meta.outputs.tags }}
           devel.labels=${{ steps.meta.outputs.labels }}
-          runtime.cache-from=type=registry,ref=ghcr.io/youtalk/autoware:buildcache
-          runtime.cache-to=type=registry,ref=ghcr.io/youtalk/autoware:buildcache,mode=max
           runtime.tags=${{ steps.meta.outputs.tags }}
           runtime.labels=${{ steps.meta.outputs.labels }}
 
