@@ -38,6 +38,20 @@ jobs:
             lib_dir: x86_64
             additional-tag-suffix: -cuda
     steps:
+      - name: Check if PR author is the specific user
+        id: author-check
+        run: |
+          PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          echo "PR_AUTHOR=$PR_AUTHOR"
+          if [[ "$PR_AUTHOR" == "youtalk" ]]; then
+            echo "Author is target-user"
+            echo "::set-output name=author-found::true"
+          else
+            echo "Author is not target-user"
+            echo "::set-output name=author-found::false"
+          fi
+        shell: bash
+
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -49,6 +63,7 @@ jobs:
           fi
 
       - name: Build 'autoware-openadk'
+        if: steps.author-check.outputs.author-found == 'true'
         uses: ./.github/actions/docker-build-and-push
         with:
           bake-target: autoware-openadk
@@ -61,7 +76,3 @@ jobs:
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
           tag-prefix: ${{ env.rosdistro }}
           allow-push: true
-
-      - name: Show disk space
-        run: |
-          df -h
