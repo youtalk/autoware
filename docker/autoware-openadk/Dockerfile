@@ -70,8 +70,10 @@ RUN --mount=type=ssh \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && find / -name 'libcu*.a' -delete \
-  && find / -name 'libnv*.a' -delete \
-  && source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  && find / -name 'libnv*.a' -delete
+
+# Build Autoware
+RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
     " -Wno-dev" \
     " --no-warn-unused-cli" \
