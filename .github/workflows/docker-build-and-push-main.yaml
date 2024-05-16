@@ -7,13 +7,7 @@
 name: docker-build-and-push-main
 
 on:
-  push:
-    tags:
-      - adkit-v*.*.*
-    branches:
-      - main
-  schedule:
-    - cron: 0 0 1,15 * *
+  pull_request:
   workflow_dispatch:
     inputs:
       artifacts-destination:
@@ -26,7 +20,7 @@ on:
 
 jobs:
   docker-build-and-push-main:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
     strategy:
       fail-fast: false
       matrix:
@@ -46,9 +40,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Free disk space
-        uses: ./.github/actions/free-disk-space
 
       - name: Load env
         run: |
