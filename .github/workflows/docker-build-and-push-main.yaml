@@ -45,10 +45,10 @@ jobs:
           echo "PR_AUTHOR=$PR_AUTHOR"
           if [[ "$PR_AUTHOR" == "youtalk" ]]; then
             echo "Author is target-user"
-            echo "::set-output name=author-found::true"
+            echo "author-foud=true" >> $GITHUB_OUTPUT
           else
             echo "Author is not target-user"
-            echo "::set-output name=author-found::false"
+            echo "author-foud=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
 
