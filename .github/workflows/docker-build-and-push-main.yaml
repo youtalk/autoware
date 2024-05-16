@@ -44,10 +44,10 @@ jobs:
           PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           if [[ "$PR_AUTHOR" == "youtalk" ]]; then
             echo "$PR_AUTHOR is a target user"
-            echo "author-foud=true" >> $GITHUB_OUTPUT
+            echo "author-found=true" >> $GITHUB_OUTPUT
           else
             echo "$PR_AUTHOR is not a target user"
-            echo "author-foud=false" >> $GITHUB_OUTPUT
+            echo "author-found=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
 
