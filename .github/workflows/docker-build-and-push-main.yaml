@@ -42,13 +42,11 @@ jobs:
         id: author-check
         run: |
           PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
-          echo $(jq "$GITHUB_EVENT_PATH")
-          echo "PR_AUTHOR=$PR_AUTHOR"
           if [[ "$PR_AUTHOR" == "youtalk" ]]; then
-            echo "Author is target-user"
+            echo "$PR_AUTHOR is a target user"
             echo "author-foud=true" >> $GITHUB_OUTPUT
           else
-            echo "Author is not target-user"
+            echo "$PR_AUTHOR is not a target user"
             echo "author-foud=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
