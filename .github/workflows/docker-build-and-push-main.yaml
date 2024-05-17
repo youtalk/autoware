@@ -46,6 +46,8 @@ jobs:
       - name: Check if PR author is the specific user
         id: author-check
         run: |
+          sudo apt-get -y update
+          sudo apt-get -y install jq
           PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           if [[ "$PR_AUTHOR" == "youtalk" ]]; then
             echo "$PR_AUTHOR is a target user"
