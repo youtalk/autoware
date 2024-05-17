@@ -57,13 +57,11 @@ RUN --mount=type=ssh \
   && find / -name 'libnv*.a' -delete
 
 # Copy repository files
-COPY autoware.repos /autoware/
+COPY src /autoware/src
 
 # Install rosdep dependencies
 RUN --mount=type=ssh \
-  mkdir src \
-  && vcs import src < autoware.repos \
-  && apt-get update \
+  apt-get update \
   && rosdep update \
   && DEBIAN_FRONTEND=noninteractive rosdep install -y --ignore-src --from-paths src --rosdistro "$ROS_DISTRO" \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
@@ -71,10 +69,10 @@ RUN --mount=type=ssh \
 # Build Autoware
 RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
-    " -Wno-dev" \
-    " --no-warn-unused-cli" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  " -Wno-dev" \
+  " --no-warn-unused-cli" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && chmod -R 777 /var/tmp/ccache \
   && rm -rf /autoware/build /autoware/src
@@ -103,12 +101,10 @@ ARG LIB_DIR
 ARG SETUP_ARGS
 
 # Set up runtime environment and artifacts
-COPY autoware.repos /autoware/
+COPY --from=prebuilt /autoware/src /autoware/src
 RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --download-artifacts --no-cuda-drivers --runtime openadk \
   && pip uninstall -y ansible ansible-core \
-  && mkdir src \
-  && vcs import src < autoware.repos \
   && rosdep update \
   && DEBIAN_FRONTEND=noninteractive rosdep install -y --dependency-types=exec --ignore-src --from-paths src --rosdistro "$ROS_DISTRO" \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
@@ -116,10 +112,10 @@ RUN --mount=type=ssh \
   && find / -name "*.o" -type f -delete \
   && find / -name "*.h" -type f -delete \
   && find / -name "*.hpp" -type f -delete \
-  && rm -rf /autoware/src /autoware/ansible /autoware/autoware.repos \
-    /root/.local/pipx /opt/ros/"$ROS_DISTRO"/include /etc/apt/sources.list.d/cuda*.list \
-    /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/nvidia-docker.list \
-    /usr/include /usr/share/doc /usr/lib/gcc /usr/lib/jvm /usr/lib/llvm*
+  && rm -rf /autoware/ansible \
+  /root/.local/pipx /opt/ros/"$ROS_DISTRO"/include /etc/apt/sources.list.d/cuda*.list \
+  /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/nvidia-docker.list \
+  /usr/include /usr/share/doc /usr/lib/gcc /usr/lib/jvm /usr/lib/llvm*
 
 # Copy prebuilt binaries
 COPY --from=prebuilt /autoware/install/ /autoware/install/
