@@ -7,13 +7,7 @@
 name: docker-build-and-push-main
 
 on:
-  push:
-    tags:
-      - adkit-v*.*.*
-    branches:
-      - main
-  schedule:
-    - cron: 0 0 1,15 * *
+  pull_request:
   workflow_dispatch:
     inputs:
       artifacts-destination:
@@ -30,7 +24,7 @@ jobs:
 
   docker-build-and-push-main:
     needs: load-env
-    runs-on: ubuntu-latest
+    runs-on: buildjet-16vcpu-ubuntu-2204
     strategy:
       fail-fast: false
       matrix:
@@ -48,13 +42,24 @@ jobs:
             lib_dir: x86_64
             additional-tag-suffix: -cuda
     steps:
+      - name: Check if PR author is the specific user
+        id: author-check
+        run: |
+          PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          if [[ "$PR_AUTHOR" == "youtalk" ]]; then
+            echo "$PR_AUTHOR is a target user"
+            echo "author-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "$PR_AUTHOR is not a target user"
+            echo "author-found=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        uses: ./.github/actions/free-disk-space
-
       - name: Build 'autoware-openadk'
+        if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
         uses: ./.github/actions/docker-build-and-push
         with:
           bake-target: autoware-openadk
@@ -64,10 +69,8 @@ jobs:
             *.args.BASE_IMAGE=${{ env[format('{0}', matrix.base_image_env)] }}
             *.args.SETUP_ARGS=${{ matrix.setup-args }}
             *.args.LIB_DIR=${{ matrix.lib_dir }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }}
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }},mode=max
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
           tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
-
-      - name: Show disk space
-        run: |
-          df -h
