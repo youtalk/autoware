@@ -31,7 +31,6 @@ jobs:
   docker-build-and-push-main-self-hosted:
     needs: load-env
     runs-on: [self-hosted, linux, ARM64]
-    container: ros:${{ needs.load-env.outputs.rosdistro }}
     strategy:
       fail-fast: false
       matrix:
@@ -57,10 +56,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install pip for rosdep
+      - name: Install vcstool
         run: |
           sudo apt-get -y update
           sudo apt-get -y install python3-pip
+          pip install --no-cache-dir vcstool
 
       - name: Register AutonomouStuff repository
         uses: autowarefoundation/autoware-github-actions/register-autonomoustuff-repository@v1
