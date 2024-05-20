@@ -32,7 +32,6 @@ WORKDIR /autoware
 RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module base --runtime openadk \
   && pip uninstall -y ansible ansible-core \
-  && pip install --no-cache-dir vcstool \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
@@ -51,7 +50,6 @@ WORKDIR /autoware
 RUN --mount=type=ssh \
   ./setup-dev-env.sh -y rosdep \
   && pip uninstall -y ansible ansible-core \
-  && pip install --no-cache-dir vcstool \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Copy repository files
