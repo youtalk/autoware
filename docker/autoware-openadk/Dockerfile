@@ -75,7 +75,7 @@ RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && chmod -R 777 /var/tmp/ccache \
-  && rm -rf /autoware/build /autoware/src
+  && rm -rf /autoware/build
 
 CMD ["/bin/bash"]
 
