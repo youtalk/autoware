@@ -75,7 +75,6 @@ RUN --mount=type=ssh \
   && find / -name 'libnv*.a' -delete
 
 # Install rosdep dependencies
-COPY --from=src-imported /autoware/src /autoware/src
 COPY --from=src-imported /rosdep-all-depend-packages.txt /tmp/rosdep-all-depend-packages.txt
 # hadolint ignore=SC2002
 RUN --mount=type=ssh \
@@ -84,6 +83,7 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Build Autoware
+COPY --from=src-imported /autoware/src /autoware/src
 RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
     " -Wno-dev" \
@@ -92,7 +92,7 @@ RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && chmod -R 777 /var/tmp/ccache \
-  && rm -rf /autoware/build
+  && rm -rf /autoware/build /autoware/src
 
 CMD ["/bin/bash"]
 
