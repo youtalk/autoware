@@ -98,7 +98,7 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Build Autoware
-RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
+RUN --mount=type=cache,type=/var/tmp/ccache source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
     " -Wno-dev" \
     " --no-warn-unused-cli" \
