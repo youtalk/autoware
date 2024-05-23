@@ -20,12 +20,12 @@ fi
 option_no_nvidia=false
 option_devel=false
 option_headless=false
-DATA_PATH=""
+DATA_PATH="${HOME}/autoware_data"
 MAP_PATH=""
 WORKSPACE_PATH=""
 USER_ID=""
 WORKSPACE=""
-DEFAULT_LAUNCH_CMD="ros2 launch autoware_launch autoware.launch.xml map_path:=/autoware_map vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit"
+DEFAULT_LAUNCH_CMD="ros2 launch autoware_launch autoware.launch.xml data_path:=/autoware_data map_path:=/autoware_map vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit"
 
 # Function to print help message
 print_help() {
@@ -102,6 +102,9 @@ set_variables() {
     fi
 
     # Mount data path if provided
+    if [ ! -d "$DATA_PATH" ]; then
+        # TODO(youtalk)
+    fi
     DATA="-v ${DATA_PATH}:/autoware_data:ro"
 
     # Mount map path if provided
