@@ -102,9 +102,6 @@ set_variables() {
     fi
 
     # Mount data path if provided
-    if [ ! -d "$DATA_PATH" ]; then
-        # TODO(youtalk)
-    fi
     DATA="-v ${DATA_PATH}:/autoware_data:ro"
 
     # Mount map path if provided
