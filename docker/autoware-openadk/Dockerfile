@@ -5,6 +5,8 @@ FROM $BASE_IMAGE as base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+RUN echo "DO NOT MERGE"
+
 # Install apt packages and add GitHub to known hosts for private repositories
 RUN rm -f /etc/apt/apt.conf.d/docker-clean \
   && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
