@@ -7,13 +7,7 @@
 name: docker-build-and-push-main
 
 on:
-  push:
-    tags:
-      - adkit-v*.*.*
-    branches:
-      - main
-  schedule:
-    - cron: 0 0 1,15 * *
+  pull_request:
   workflow_dispatch:
     inputs:
       artifacts-destination:
@@ -25,8 +19,12 @@ on:
         default: tarball
 
 jobs:
+  load-env:
+    uses: ./.github/workflows/load-env.yaml
+
   docker-build-and-push-main:
-    runs-on: ubuntu-latest
+    needs: load-env
+    runs-on: buildjet-16vcpu-ubuntu-2204
     strategy:
       fail-fast: false
       matrix:
@@ -44,31 +42,53 @@ jobs:
             lib_dir: x86_64
             additional-tag-suffix: -cuda
     steps:
+      - name: Check if PR author is the specific user
+        id: author-check
+        run: |
+          PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          if [[ "$PR_AUTHOR" == "youtalk" ]]; then
+            echo "$PR_AUTHOR is a target user"
+            echo "author-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "$PR_AUTHOR is not a target user"
+            echo "author-found=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        uses: ./.github/actions/free-disk-space
-
-      - name: Load env
+      - name: Install vcstool
         run: |
-          cat amd64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          if [ "$(uname -m)" = "aarch64" ]; then
-            cat arm64.env | sed -e "s/^\s*//" -e "/^#/d" >> $GITHUB_ENV
-          fi
+          sudo apt-get -y update
+          sudo apt-get -y install python3-pip
+          pip install --no-cache-dir vcstool
+
+      - name: Set git config
+        uses: autowarefoundation/autoware-github-actions/set-git-config@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run vcs import
+        run: |
+          mkdir src
+          vcs import src < autoware.repos
 
       - name: Build 'autoware-openadk'
+        if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
         uses: ./.github/actions/docker-build-and-push
         with:
           bake-target: autoware-openadk
           build-args: |
             *.platform=linux/amd64
-            *.args.ROS_DISTRO=${{ env.rosdistro }}
-            *.args.BASE_IMAGE=${{ env[format('{0}', matrix.base_image_env)] }}
+            *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+            *.args.BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
             *.args.SETUP_ARGS=${{ matrix.setup-args }}
             *.args.LIB_DIR=${{ matrix.lib_dir }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }}
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }},mode=max
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
-          tag-prefix: ${{ env.rosdistro }}
+          tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
 
       - name: Show disk space

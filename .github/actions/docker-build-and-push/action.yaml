@@ -25,12 +25,6 @@ runs:
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Install jq
-      run: |
-        sudo apt-get -y update
-        sudo apt-get -y install jq
-      shell: bash
-
     - name: Set Docker tags
       id: set-docker-tags
       run: |
@@ -54,7 +48,7 @@ runs:
       id: meta-prebuilt
       uses: docker/metadata-action@v4
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
+        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-prebuilt
         flavor: |
@@ -65,7 +59,7 @@ runs:
       id: meta-devel
       uses: docker/metadata-action@v4
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
+        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-devel
         flavor: |
@@ -77,7 +71,7 @@ runs:
       id: meta-runtime
       uses: docker/metadata-action@v4
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
+        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-runtime
         flavor: |
@@ -85,11 +79,10 @@ runs:
           suffix=-runtime${{ inputs.tag-suffix }}
 
     - name: Login to GitHub Container Registry
-      if: ${{ github.event_name != 'pull_request' }}
       uses: docker/login-action@v2
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
+        username: ${{ github.actor }}
         password: ${{ github.token }}
 
     - name: Build and Push - prebuilt and devel
@@ -123,7 +116,6 @@ runs:
           ${{ inputs.build-args }}
 
     - name: Build and Save Artifacts
-      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
       uses: docker/bake-action@v3
       with:
         push: false
@@ -151,6 +143,12 @@ runs:
         overwrite: true
         if-no-files-found: error
 
+    - name: Remove tar file - prebuilt
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
+      run: |
+        rm /tmp/prebuilt.tar
+      shell: bash
+
     - name: Upload Artifact - devel
       if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
       id: artifact-upload-step-devel
@@ -163,6 +161,12 @@ runs:
         overwrite: true
         if-no-files-found: error
 
+    - name: Remove tar file - devel
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
+      run: |
+        rm /tmp/devel.tar
+      shell: bash
+
     - name: Upload Artifact - runtime
       if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
       id: artifact-upload-step-runtime
@@ -174,6 +178,12 @@ runs:
         compression-level: 6
         overwrite: true
         if-no-files-found: error
+
+    - name: Remove tar file - runtime
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'tarball' }}
+      run: |
+        rm /tmp/runtime.tar
+      shell: bash
 
     - name: Output artifact URLs
       id: output-artifact-urls
