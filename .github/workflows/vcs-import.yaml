@@ -16,16 +16,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Cache apt archives
-        uses: actions/cache@v3
-        with:
-          path: |
-            /var/cache/apt
-            /var/lib/apt
-          key: apt-${{ runner.os }}-${{ github.ref_name }}
-          restore-keys: |
-            apt-${{ runner.os }}-
-
       - name: Install pip for rosdep
         run: |
           sudo apt-get -y update
