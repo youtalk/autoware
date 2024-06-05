@@ -24,7 +24,7 @@ jobs:
 
   docker-build-and-push-main-self-hosted:
     needs: load-env
-    runs-on: buildjet-16vcpu-ubuntu-2204-arm
+    runs-on: buildjet-8vcpu-ubuntu-2204-arm
     strategy:
       fail-fast: false
       matrix:
