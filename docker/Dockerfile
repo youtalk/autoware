@@ -66,8 +66,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
 ENV CCACHE_DIR="/var/tmp/ccache"
-ENV CC="/usr/lib/ccache/gcc"
-ENV CXX="/usr/lib/ccache/g++"
 
 # cspell: ignore libcu libnv
 # Set up development environment
@@ -92,6 +90,8 @@ RUN ccache -s
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
+    " -DCMAKE_C_COMPILER_LAUNCHER=ccache",
+    " -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     " -Wno-dev" \
     " --no-warn-unused-cli" \
     -DCMAKE_BUILD_TYPE=Release \
