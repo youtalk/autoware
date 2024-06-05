@@ -90,10 +90,10 @@ RUN ccache -s
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
-    " -DCMAKE_C_COMPILER_LAUNCHER=ccache",
-    " -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     " -Wno-dev" \
     " --no-warn-unused-cli" \
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   && find /autoware/install -type d -exec chmod 777 {} \; \
