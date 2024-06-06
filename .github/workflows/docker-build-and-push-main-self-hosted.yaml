@@ -60,9 +60,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: ccache-${{ matrix.lib_dir }}-${{ matrix.name }}
+          key: cache-arm64-${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
-            ccache-${{ matrix.lib_dir }}
+            cache-arm64-${{ matrix.name }}-main
+            cache-arm64-${{ matrix.name }}-
+            cache-arm64-
 
       - name: Check ccache
         run: |
