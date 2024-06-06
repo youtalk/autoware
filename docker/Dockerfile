@@ -90,8 +90,6 @@ RUN mkdir -p ${CCACHE_DIR} && ccache -s && du -sh ${CCACHE_DIR}
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
-    " -Wno-dev" \
-    " --no-warn-unused-cli" \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     -DCMAKE_BUILD_TYPE=Release \
