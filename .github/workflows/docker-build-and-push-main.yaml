@@ -69,6 +69,7 @@ jobs:
       - name: Check ccache
         run: |
           mkdir -p .ccache
+          echo hello > .cache/hello.txt
           du -sh .ccache
           ls -R .ccache
 
