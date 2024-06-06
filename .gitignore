@@ -12,6 +12,9 @@ install/
 log/
 /src/
 
+# C++
+.ccache
+
 # Python
 *.pyc
 
