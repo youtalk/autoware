@@ -93,7 +93,6 @@ RUN --mount=type=bind,source=.ccache,target=/root/.ccache \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     --mixin ccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
-  && chmod -R 777 /var/tmp/ccache \
   && rm -rf /autoware/build /autoware/src \
   && ccache -s
 
