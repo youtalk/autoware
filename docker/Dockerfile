@@ -85,17 +85,17 @@ RUN --mount=type=ssh \
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
-RUN ccache -s
 RUN --mount=type=cache,target=/root/.ccache \
-  source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  ccache -s \
+  && source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     --mixin ccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && chmod -R 777 /var/tmp/ccache \
-  && rm -rf /autoware/build /autoware/src
-RUN ccache -s
+  && rm -rf /autoware/build /autoware/src \
+  && ccache -s
 
 CMD ["/bin/bash"]
 
