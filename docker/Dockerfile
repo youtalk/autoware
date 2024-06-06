@@ -95,6 +95,7 @@ RUN --mount=type=bind,source=.ccache,target=/root/.ccache,rw \
     " --no-warn-unused-cli" \
     --mixin ccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
+  && chmod -R 777 /root/.ccache \
   && rm -rf /autoware/build /autoware/src \
   && ccache -s
 
