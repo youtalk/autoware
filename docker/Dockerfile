@@ -91,6 +91,8 @@ RUN --mount=type=bind,source=.ccache,target=/root/.ccache \
   && colcon build --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    " -Wno-dev" \
+    " --no-warn-unused-cli" \
     --mixin ccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && rm -rf /autoware/build /autoware/src \
