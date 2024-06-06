@@ -1,0 +1,5 @@
+- name: Create .ccache directory
+  ansible.builtin.file:
+    path: .ccache
+    state: directory
+    mode: 0755
