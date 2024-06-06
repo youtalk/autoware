@@ -65,7 +65,7 @@ FROM base as prebuilt
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
-ENV CCACHE_DIR="/var/tmp/ccache"
+ENV CCACHE_DIR="/root/.ccache"
 
 # cspell: ignore libcu libnv
 # Set up development environment
@@ -96,7 +96,6 @@ RUN --mount=type=bind,source=.ccache,target=${CCACHE_DIR},rw \
     " --no-warn-unused-cli" \
     --mixin ccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
-  && chmod -R 777 ${CCACHE_DIR} \
   && rm -rf /autoware/build /autoware/src \
   && ccache -s && du -sh ${CCACHE_DIR} && ls -R ${CCACHE_DIR}
 
