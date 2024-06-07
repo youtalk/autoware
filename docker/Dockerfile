@@ -89,18 +89,18 @@ RUN --mount=type=ssh \
 RUN --mount=type=cache,target=/root/.test \
   mkdir -p /root/.test && ls /root/.test && echo "Test" > /root/.test/test.txt
 
-# Build Autoware
-COPY src /autoware/src
-RUN --mount=type=cache,target=${CCACHE_DIR} \
-  ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR} \
-  && source /opt/ros/"$ROS_DISTRO"/setup.bash \
-  && colcon build --cmake-args \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    " -Wno-dev" \
-    " --no-warn-unused-cli" \
-    --mixin ccache \
-  && ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR}
+# # Build Autoware
+# COPY src /autoware/src
+# RUN --mount=type=cache,target=${CCACHE_DIR} \
+#   ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR} \
+#   && source /opt/ros/"$ROS_DISTRO"/setup.bash \
+#   && colcon build --cmake-args \
+#     -DCMAKE_BUILD_TYPE=Release \
+#     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+#     " -Wno-dev" \
+#     " --no-warn-unused-cli" \
+#     --mixin ccache \
+#   && ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR}
 
 CMD ["/bin/bash"]
 
