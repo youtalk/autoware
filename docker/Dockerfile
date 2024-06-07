@@ -92,7 +92,7 @@ RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
 RUN --mount=type=cache,target=/root/.cache/sccache,sharing=locked \
-  ls /root/.cache/sccache && du -sh /root/.cache/sccache \
+  sccache --show-stats && du -sh /root/.cache/sccache \
   && source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && colcon build --cmake-args \
     " -Wno-dev" \
@@ -100,7 +100,7 @@ RUN --mount=type=cache,target=/root/.cache/sccache,sharing=locked \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     --mixin sccache \
-  && ls /root/.cache/sccache && du -sh /root/.cache/sccache \
+  && sccache --show-stats && du -sh /root/.cache/sccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
   && rm -rf /autoware/build /autoware/src
 
