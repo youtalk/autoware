@@ -84,10 +84,10 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Install sccache
-RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
-    && tar -xvf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
-    && mv sccache-dist-v0.8.1-x86_64-unknown-linux-musl/sccache-dist /usr/local/bin/sccache \
-    && rm -rf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-dist-v0.8.1-x86_64-unknown-linux-musl
+RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
+    && tar -xvf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
+    && mv sccache-v0.8.1-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+    && rm -rf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-v0.8.1-x86_64-unknown-linux-musl
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
