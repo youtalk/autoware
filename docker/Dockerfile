@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # hadolint global ignore=DL3006,DL3008,DL3013
 ARG BASE_IMAGE
 
