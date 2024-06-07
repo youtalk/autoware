@@ -85,8 +85,8 @@ RUN --mount=type=ssh \
 
 # Install sccache
 RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
-    && tar -xvf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz && \
-    && mv sccache-dist-v0.8.1-x86_64-unknown-linux-musl/sccache-dist /usr/local/bin/sccache && \
+    && tar -xvf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
+    && mv sccache-dist-v0.8.1-x86_64-unknown-linux-musl/sccache-dist /usr/local/bin/sccache \
     && rm -rf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-dist-v0.8.1-x86_64-unknown-linux-musl
 
 # Build Autoware
