@@ -65,9 +65,6 @@ FROM base as prebuilt
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
-ENV CCACHE_DIR="/var/tmp/ccache"
-ENV CC="/usr/lib/ccache/gcc"
-ENV CXX="/usr/lib/ccache/g++"
 
 # cspell: ignore libcu libnv
 # Set up development environment
@@ -86,17 +83,25 @@ RUN --mount=type=ssh \
   && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
+# Install sccache
+RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz
+RUN tar -xvf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz
+RUN mv sccache-dist-v0.8.1-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache
+RUN rm -rf sccache-dist-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-dist-v0.8.1-x86_64-unknown-linux-musl
+
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
-RUN --mount=type=cache,target=${CCACHE_DIR} \
-  source /opt/ros/"$ROS_DISTRO"/setup.bash \
-  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --cmake-args \
+RUN --mount=type=cache,target=/root/.cache/sccache \
+  ls /root/.cache/sccache && du -sh /root/.cache/sccache \
+  && source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  && colcon build --cmake-args \
     " -Wno-dev" \
     " --no-warn-unused-cli" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    --mixin sccache \
+  && ls /root/.cache/sccache && du -sh /root/.cache/sccache \
   && find /autoware/install -type d -exec chmod 777 {} \; \
-  && chmod -R 777 /var/tmp/ccache \
   && rm -rf /autoware/build /autoware/src
 
 CMD ["/bin/bash"]
