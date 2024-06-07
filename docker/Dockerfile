@@ -73,6 +73,7 @@ ENV CCACHE_DIR="/root/.ccache"
 RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
+  && apt-get update && apt-get install -y --no-install-recommends ccache \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && find / -name 'libcu*.a' -delete \
   && find / -name 'libnv*.a' -delete
@@ -86,7 +87,6 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Build Autoware
-RUN mkdir -p ${CCACHE_DIR}
 COPY --from=src-imported /autoware/src /autoware/src
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR} \
