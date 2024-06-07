@@ -85,6 +85,7 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Build Autoware
+RUN rm -rf /root/.ccache
 COPY --from=src-imported /autoware/src /autoware/src
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   ccache -s && du -sh ${CCACHE_DIR} && ls ${CCACHE_DIR} \
