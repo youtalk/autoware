@@ -75,6 +75,12 @@ RUN --mount=type=ssh \
   && find / -name 'libcu*.a' -delete \
   && find / -name 'libnv*.a' -delete
 
+# Install sccache
+RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
+    && tar -xvf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
+    && mv sccache-v0.8.1-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+    && rm -rf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-v0.8.1-x86_64-unknown-linux-musl
+
 # Install rosdep dependencies
 COPY --from=src-imported /rosdep-all-depend-packages.txt /tmp/rosdep-all-depend-packages.txt
 # hadolint ignore=SC2002
@@ -82,12 +88,6 @@ RUN --mount=type=ssh \
   apt-get update \
   && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
-
-# Install sccache
-RUN wget https://github.com/mozilla/sccache/releases/download/v0.8.1/sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
-    && tar -xvf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz \
-    && mv sccache-v0.8.1-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
-    && rm -rf sccache-v0.8.1-x86_64-unknown-linux-musl.tar.gz sccache-v0.8.1-x86_64-unknown-linux-musl
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
