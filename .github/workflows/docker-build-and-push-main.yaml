@@ -80,7 +80,6 @@ jobs:
       - name: Show ccache
         run: |
           mkdir -p root-ccache
-          touch root-ccache/test
           ls -l root-ccache || true
 
       - name: Inject cache into docker
