@@ -71,13 +71,19 @@ jobs:
         with:
           path: |
             var-tmp-ccache
-          key: cache-${{ matrix.platform }}--${{ matrix.name }}-${{ github.ref_name }}
+          key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-main
             cache-${{ matrix.platform }}-${{ matrix.name }}-
             cache-${{ matrix.platform }}-
 
-      - name: inject cache into docker
+      - name: Show ccache
+        run: |
+          ls -l var-tmp-ccache
+          ls /var/tmp/ccache
+          du -sh /var/tmp/ccache
+
+      - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3
         with:
           cache-map: |
@@ -102,6 +108,12 @@ jobs:
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
           tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
+
+      - name: Show ccache
+        run: |
+          ls -l var-tmp-ccache
+          ls /var/tmp/ccache
+          du -sh /var/tmp/ccache
 
       - name: Show disk space
         run: |
