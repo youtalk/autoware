@@ -79,6 +79,27 @@ jobs:
           mkdir src
           vcs import src < autoware.repos
 
+      - name: Cache mount=type=cache files
+        uses: actions/cache@v3
+        id: cache-mount-type-cache
+        with:
+          path: |
+            root-ccache
+          key: cache-${{ matrix.platform }}--${{ matrix.name }}-${{ github.ref_name }}
+          restore-keys: |
+            cache-${{ matrix.platform }}-${{ matrix.name }}-main
+            cache-${{ matrix.platform }}-${{ matrix.name }}-
+            cache-${{ matrix.platform }}-
+
+      - name: inject cache into docker
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          cache-map: |
+            {
+              "root-ccache": "/var/tmp/ccache",
+            }
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+
       - name: Build 'Autoware'
         if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
         uses: ./.github/actions/docker-build-and-push
@@ -90,8 +111,8 @@ jobs:
             *.args.BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
             *.args.SETUP_ARGS=${{ matrix.setup-args }}
             *.args.LIB_DIR=${{ matrix.lib_dir }}
-            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }}-${{ matrix.platform }}
-            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.name }}-${{ matrix.platform }},mode=max
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
           tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
