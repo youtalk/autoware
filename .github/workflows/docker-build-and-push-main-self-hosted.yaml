@@ -71,6 +71,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
+
       - name: Run vcs import
         run: |
           mkdir src
