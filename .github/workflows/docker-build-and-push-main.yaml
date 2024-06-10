@@ -70,7 +70,7 @@ jobs:
         id: cache
         with:
           path: |
-            var-tmp-ccache
+            root-ccache
           key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-main
@@ -79,14 +79,14 @@ jobs:
 
       - name: Show ccache
         run: |
-          ls -l var-tmp-ccache
+          ls -l root-ccache
 
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3
         with:
           cache-map: |
             {
-              "var-tmp-ccache": "/var/tmp/ccache"
+              "root-ccache": "/root/.ccache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
@@ -109,7 +109,7 @@ jobs:
 
       - name: Show ccache
         run: |
-          ls -l var-tmp-ccache
+          ls -l root-ccache
 
       - name: Show disk space
         run: |
