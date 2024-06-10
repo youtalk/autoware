@@ -65,9 +65,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache mount=type=cache files
+      - name: Cache Docker build cache
         uses: actions/cache@v3
-        id: cache-mount-type-cache
+        id: cache
         with:
           path: |
             root-ccache
