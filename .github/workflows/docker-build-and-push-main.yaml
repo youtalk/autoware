@@ -110,7 +110,7 @@ jobs:
 
       - name: Show ccache
         run: |
-          ls -l root-ccache
+          ls -l root-ccache || true
           ls -l /root/.ccache || true
 
       - name: Show disk space
