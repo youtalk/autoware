@@ -95,7 +95,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
     --mixin release compile-commands ccache \
   && du -sh ${CCACHE_DIR} && ccache -s \
   && find /autoware/install -type d -exec chmod 777 {} \; \
-  && chmod -R 777 /var/tmp/ccache \
+  && chmod -R 777 ${CCACHE_DIR} \
   && rm -rf /autoware/build /autoware/src
 
 CMD ["/bin/bash"]
