@@ -82,7 +82,7 @@ jobs:
         with:
           cache-map: |
             {
-              "root-ccache": "/var/tmp/ccache",
+              "root-ccache": "/var/tmp/ccache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
