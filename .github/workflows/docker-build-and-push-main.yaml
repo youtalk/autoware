@@ -70,7 +70,7 @@ jobs:
         id: cache
         with:
           path: |
-            root-ccache
+            var-tmp-ccache
           key: cache-${{ matrix.platform }}--${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-main
@@ -82,7 +82,7 @@ jobs:
         with:
           cache-map: |
             {
-              "root-ccache": "/var/tmp/ccache"
+              "var-tmp-ccache": "/var/tmp/ccache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
