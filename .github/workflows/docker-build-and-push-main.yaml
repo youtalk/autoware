@@ -79,7 +79,8 @@ jobs:
 
       - name: Show ccache
         run: |
-          ls -l root-ccache
+          ls -l root-ccache || true
+          ls -l /root/.ccache || true
 
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3
@@ -110,6 +111,7 @@ jobs:
       - name: Show ccache
         run: |
           ls -l root-ccache
+          ls -l /root/.ccache || true
 
       - name: Show disk space
         run: |
