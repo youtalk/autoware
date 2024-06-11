@@ -33,11 +33,13 @@ jobs:
           - cuda
         include:
           - name: no-cuda
+            platform: amd64
             base_image_env: base_image
             lib_dir: x86_64
             setup-args: --no-nvidia
             additional-tag-suffix: ""
           - name: cuda
+            platform: amd64
             base_image_env: base_image
             lib_dir: x86_64
             additional-tag-suffix: -cuda
