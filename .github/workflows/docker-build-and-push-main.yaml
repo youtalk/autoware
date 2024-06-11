@@ -85,6 +85,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.ref_name }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.ref_name }},mode=max
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
           tags: ${{ steps.meta.outputs.tags }}
