@@ -8,16 +8,6 @@ inputs:
   build-args:
     description: ""
     required: false
-  tag-prefix:
-    description: ""
-    required: false
-  tag-suffix:
-    description: ""
-    required: false
-  allow-push:
-    description: ""
-    default: "true"
-    required: false
 
 runs:
   using: composite
@@ -38,58 +28,11 @@ runs:
         vcs import src < autoware.repos
       shell: bash
 
-    - name: Set Docker tags
-      id: set-docker-tags
-      run: |
-        tags=()
-        if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_type }}" == "tag" ]; then
-            tags+=("$(echo "${{ github.ref }}" | sed -E 's/.*([vV][0-9]+\.[0-9]+\.[0-9]+).*/\1/')")
-        fi
-
-        tags+=("{{date 'YYYYMMDD'}}")
-        tags+=("latest")
-        tags+=("latest-${{ inputs.tag-prefix }}")
-
-        # Output multiline strings: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
-        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        echo "tags<<$EOF" >> $GITHUB_OUTPUT
-        echo "$(printf "%s\n" "${tags[@]}")" >> $GITHUB_OUTPUT
-        echo "$EOF" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Docker meta for prebuilt
-      id: meta-prebuilt
+    - name: Docker meta
+      id: meta
       uses: docker/metadata-action@v4
       with:
         images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
-        tags: ${{ steps.set-docker-tags.outputs.tags }}
-        bake-target: docker-metadata-action-prebuilt
-        flavor: |
-          latest=false
-          suffix=-prebuilt${{ inputs.tag-suffix }}
-
-    - name: Docker meta for devel
-      id: meta-devel
-      uses: docker/metadata-action@v4
-      with:
-        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
-        tags: ${{ steps.set-docker-tags.outputs.tags }}
-        bake-target: docker-metadata-action-devel
-        flavor: |
-          latest=false
-          suffix=-devel${{ inputs.tag-suffix }}
-
-    - name: Docker meta for runtime
-      if: ${{ github.event_name == 'workflow_dispatch' }} || ${{ (github.event_name == 'push' && github.ref_type == 'tag') }}
-      id: meta-runtime
-      uses: docker/metadata-action@v4
-      with:
-        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
-        tags: ${{ steps.set-docker-tags.outputs.tags }}
-        bake-target: docker-metadata-action-runtime
-        flavor: |
-          latest=${{ github.event_name == 'push' && github.ref_type == 'tag' }}
-          suffix=-runtime${{ inputs.tag-suffix }}
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
@@ -98,29 +41,12 @@ runs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
 
-    - name: Build and Push to GitHub Container Registry
-      if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || ( github.event_name == 'workflow_dispatch' && github.event.inputs.artifacts-destination == 'registry') }}
+    - name: Build and push
       uses: docker/bake-action@v3
       with:
-        push: ${{ inputs.allow-push == 'true' }}
+        push: true
         files: |
           docker/docker-bake.hcl
-          ${{ steps.meta-prebuilt.outputs.bake-file }}
-          ${{ steps.meta-devel.outputs.bake-file }}
-          ${{ steps.meta-runtime.outputs.bake-file }}
-        provenance: false
-        set: |
-          ${{ inputs.build-args }}
-
-    - name: Build only
-      uses: docker/bake-action@v3
-      with:
-        push: false
-        files: |
-          docker/docker-bake.hcl
-          ${{ steps.meta-prebuilt.outputs.bake-file }}
-          ${{ steps.meta-devel.outputs.bake-file }}
-          ${{ steps.meta-runtime.outputs.bake-file }}
         provenance: false
         set: |
           ${{ inputs.build-args }}
