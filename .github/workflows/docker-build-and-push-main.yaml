@@ -71,8 +71,6 @@ jobs:
         with:
           path: |
             root-ccache
-            var-cache-apt
-            var-lib-apt
           key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-main
@@ -84,9 +82,7 @@ jobs:
         with:
           cache-map: |
             {
-              "root-ccache": "/root/.ccache",
-              "var-cache-apt": "/var/cache/apt",
-              "var-lib-apt": "/var/lib/apt"
+              "root-ccache": "/root/.ccache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 

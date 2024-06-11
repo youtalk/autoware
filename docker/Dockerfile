@@ -5,16 +5,11 @@ FROM $BASE_IMAGE as base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
-
 # Install apt packages and add GitHub to known hosts for private repositories
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
   gosu \
   ssh \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && mkdir -p ~/.ssh \
   && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
@@ -24,12 +19,10 @@ COPY ansible/ /autoware/ansible/
 WORKDIR /autoware
 
 # Set up base environment
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  --mount=type=ssh \
+RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module base --runtime openadkit \
   && pip uninstall -y ansible ansible-core \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
 # Create entrypoint
@@ -39,20 +32,15 @@ FROM $BASE_IMAGE as src-imported
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
-
 # Copy files
 COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
 COPY ansible/ /autoware/ansible/
 WORKDIR /autoware
 
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  --mount=type=ssh \
+RUN --mount=type=ssh \
   ./setup-dev-env.sh -y rosdep \
-  && pip uninstall -y ansible ansible-core
+  && pip uninstall -y ansible ansible-core \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Copy repository files
 COPY src /autoware/src
@@ -81,12 +69,10 @@ ENV CCACHE_DIR="/root/.ccache"
 
 # cspell: ignore libcu libnv
 # Set up development environment
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  --mount=type=ssh \
+RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && find / -name 'libcu*.a' -delete \
   && find / -name 'libnv*.a' -delete
 
@@ -95,7 +81,8 @@ COPY --from=src-imported /rosdep-all-depend-packages.txt /tmp/rosdep-all-depend-
 # hadolint ignore=SC2002
 RUN --mount=type=ssh \
   apt-get update \
-  && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends
+  && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
@@ -117,12 +104,10 @@ FROM prebuilt as devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install development tools and artifacts
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  --mount=type=ssh \
+RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module dev-tools openadkit \
-  && pip uninstall -y ansible ansible-core
+  && pip uninstall -y ansible ansible-core \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 # Create entrypoint
 COPY docker/etc/ros_entrypoint.sh /ros_entrypoint.sh
@@ -139,14 +124,12 @@ ARG SETUP_ARGS
 # Set up runtime environment and artifacts
 COPY --from=src-imported /rosdep-exec-depend-packages.txt /tmp/rosdep-exec-depend-packages.txt
 # hadolint ignore=SC2002
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  --mount=type=ssh \
+RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers --runtime openadkit \
   && pip uninstall -y ansible ansible-core \
   && apt-get update \
   && cat /tmp/rosdep-exec-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
   && find /usr/lib/$LIB_DIR-linux-gnu -name "*.a" -type f -delete \
   && find / -name "*.o" -type f -delete \
   && find / -name "*.h" -type f -delete \
