@@ -87,6 +87,11 @@ jobs:
           file: docker/Dockerfile
           context: .
           push: true
+          build-args: |
+            ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+            BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
+            SETUP_ARGS=${{ matrix.setup-args }}
+            LIB_DIR=${{ matrix.lib_dir }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
           tags: ${{ steps.meta.outputs.tags }}
