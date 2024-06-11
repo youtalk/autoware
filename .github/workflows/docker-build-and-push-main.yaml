@@ -86,7 +86,7 @@ jobs:
         with:
           push: true
           files: |
-            docker-bake.hcl
+            docker/docker-bake.hcl
           provenance: false
           set: |
             *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.ref_name }}
