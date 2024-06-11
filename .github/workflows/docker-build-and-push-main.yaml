@@ -84,6 +84,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
+          file: docker/Dockerfile
+          context: .
           push: true
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
