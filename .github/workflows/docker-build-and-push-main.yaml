@@ -82,16 +82,13 @@ jobs:
           password: ${{ github.token }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/bake-action@v4
         with:
-          file: docker/Dockerfile
-          context: .
           push: true
-          build-args: |
-            ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
-            BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
-            SETUP_ARGS=${{ matrix.setup-args }}
-            LIB_DIR=${{ matrix.lib_dir }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
-          tags: ${{ steps.meta.outputs.tags }}
+          files: |
+            docker/docker-bake.hcl
+          provenance: false
+          set: |
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
+            *.tags=${{ steps.meta.outputs.tags }}
