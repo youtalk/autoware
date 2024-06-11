@@ -91,7 +91,7 @@ jobs:
         with:
           cache-map: |
             {
-              "root-ccache": "/root/.ccache"
+              "root-ccache": "/root/.ccache",
               "test-cache": "/root/.testcache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
