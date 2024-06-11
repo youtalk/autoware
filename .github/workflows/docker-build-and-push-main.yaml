@@ -89,6 +89,10 @@ jobs:
             docker/docker-bake.hcl
           provenance: false
           set: |
+            *.args.ROS_DISTRO=humble
+            *.args.BASE_IMAGE=ros:humble-ros-base-jammy
+            *.args.SETUP_ARGS=--no-nvidia
+            *.args.LIB_DIR=amd64
             *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }}
             *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref }},mode=max
             *.tags=${{ steps.meta.outputs.tags }}
