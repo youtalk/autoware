@@ -1,15 +1,5 @@
 group "default" {
-  targets = ["prebuilt", "devel", "runtime"]
-}
-
-target "prebuilt" {
-  dockerfile = "docker/Dockerfile"
-  target = "prebuilt"
-}
-
-target "devel" {
-  dockerfile = "docker/Dockerfile"
-  target = "devel"
+  targets = ["runtime"]
 }
 
 target "runtime" {
