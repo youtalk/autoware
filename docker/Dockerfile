@@ -85,8 +85,8 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
 RUN --mount=type=cache,target=/root/.testcache \
-  ls /root/.testcache \
-  && touch /root/.testcache/test2
+  touch /root/.testcache/test2 \
+  && ls /root/.testcache
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
