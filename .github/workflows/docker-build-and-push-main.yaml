@@ -71,30 +71,24 @@ jobs:
         with:
           path: |
             root-ccache
-            test-cache
           key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ github.ref_name }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-main
             cache-${{ matrix.platform }}-${{ matrix.name }}-
             cache-${{ matrix.platform }}-
 
-      - name: Show ccache
-        run: |
-          mkdir -p root-ccache
-          ls -l root-ccache || true
-          mkdir -p test-cache
-          touch test-cache/test1
-          ls -l test-cache || true
-
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3
         with:
           cache-map: |
             {
-              "root-ccache": "/root/.ccache",
-              "test-cache": "/root/.testcache"
+              "root-ccache": "/root/.ccache"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+
+      - name: Show cache
+        run: |
+          ls -l root-ccache || true
 
       - name: Build 'Autoware'
         if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
@@ -112,11 +106,6 @@ jobs:
           tag-suffix: ${{ matrix.additional-tag-suffix }}-amd64
           tag-prefix: ${{ needs.load-env.outputs.rosdistro }}
           allow-push: true
-
-      - name: Show ccache
-        run: |
-          ls -l root-ccache || true
-          ls -l test-cache || true
 
       - name: Show disk space
         run: |

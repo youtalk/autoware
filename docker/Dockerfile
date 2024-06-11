@@ -84,10 +84,6 @@ RUN --mount=type=ssh \
   && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
-RUN --mount=type=cache,target=/root/.testcache \
-  touch /root/.testcache/test2 \
-  && ls /root/.testcache
-
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
 RUN --mount=type=cache,target=${CCACHE_DIR} \
