@@ -22,9 +22,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
     - name: Install jq and vcstool
       run: |
         sudo apt-get -y update
