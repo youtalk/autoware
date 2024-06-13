@@ -56,6 +56,12 @@ jobs:
           pip install --no-cache-dir vcstool
         shell: bash
 
+      - name: Run vcs import
+        run: |
+          mkdir src
+          vcs import src < autoware.repos
+        shell: bash
+
       - name: Cache
         uses: actions/cache@v3
         id: cache
