@@ -1,0 +1,108 @@
+name: docker-build-cahe
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      artifacts-destination:
+        type: choice
+        description: Destination for the artifacts
+        options:
+          - registry
+          - tarball
+        default: tarball
+
+jobs:
+  load-env:
+    uses: ./.github/workflows/load-env.yaml
+
+  docker-build-cache:
+    needs: load-env
+    runs-on: buildjet-16vcpu-ubuntu-2204
+    steps:
+      - name: Check if PR author is the specific user
+        id: author-check
+        run: |
+          PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          if [[ "$PR_AUTHOR" == "youtalk" ]]; then
+            echo "$PR_AUTHOR is a target user"
+            echo "author-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "$PR_AUTHOR is not a target user"
+            echo "author-found=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - name: Set git config
+        uses: autowarefoundation/autoware-github-actions/set-git-config@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install vcstool
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install python3-pip
+          pip install --no-cache-dir vcstool
+        shell: bash
+
+      - name: Cache
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: |
+            root-ccache
+          key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ hashFiles('autoware.repos') }}
+          restore-keys: |
+            cache-${{ matrix.platform }}-${{ matrix.name }}-
+            cache-${{ matrix.platform }}-
+
+      - name: Inject cache into docker
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        with:
+          cache-map: |
+            {
+              "root-ccache": "/root/.ccache"
+            }
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build 'Autoware'
+        uses: docker/bake-action@v4
+        with:
+          push: true
+          files: |
+            docker/docker-bake.hcl
+          provenance: false
+          set: |
+            *.platform=linux/amd64
+            *.args.ROS_DISTRO=humble
+            *.args.BASE_IMAGE=ros:humble-ros-base-jammy
+            *.args.SETUP_ARGS=--no-nvidia
+            *.args.LIB_DIR=x86_64
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
+            *.tags=${{ steps.meta.outputs.tags }}
+
+      - name: Show disk space
+        run: |
+          df -h
