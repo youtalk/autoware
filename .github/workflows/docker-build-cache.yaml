@@ -89,23 +89,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build 'Autoware'
-        uses: docker/bake-action@v4
+      - name: Build 'Autoware' cache
+        uses: docker/build-push-action@v5
         with:
-          push: true
-          files: |
-            docker/docker-bake.hcl
-          provenance: false
-          set: |
-            *.platform=linux/amd64
-            *.args.ROS_DISTRO=humble
-            *.args.BASE_IMAGE=ros:humble-ros-base-jammy
-            *.args.SETUP_ARGS=--no-nvidia
-            *.args.LIB_DIR=x86_64
-            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
-            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-main
-            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
-            *.tags=${{ steps.meta.outputs.tags }}
+          file: docker/Dockerfile
+          context: .
+          push: false
+          build-args: |
+            ROS_DISTRO=humble
+            BASE_IMAGE=ros:humble-ros-base-jammy
+            SETUP_ARGS=--no-nvidia
+            LIB_DIR=x86_64
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: Show disk space
         run: |
