@@ -68,10 +68,10 @@ jobs:
         with:
           path: |
             root-ccache
-          key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ hashFiles('autoware.repos') }}
+          key: cache-amd64-no-cuda-${{ hashFiles('autoware.repos') }}
           restore-keys: |
-            cache-${{ matrix.platform }}-${{ matrix.name }}-
-            cache-${{ matrix.platform }}-
+            cache-amd64-no-cuda-
+            cache-amd64-
 
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3.1.0
