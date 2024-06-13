@@ -19,6 +19,24 @@ jobs:
   docker-build-cache:
     needs: load-env
     runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - no-cuda
+          - cuda
+        include:
+          - name: no-cuda
+            platform: amd64
+            base_image_env: base_image
+            lib_dir: x86_64
+            setup-args: --no-nvidia
+            additional-tag-suffix: ""
+          - name: cuda
+            platform: amd64
+            base_image_env: base_image
+            lib_dir: x86_64
+            additional-tag-suffix: -cuda
     steps:
       - name: Check if PR author is the specific user
         id: author-check
@@ -68,10 +86,10 @@ jobs:
         with:
           path: |
             root-ccache
-          key: cache-amd64-no-cuda-${{ hashFiles('autoware.repos') }}
+          key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ hashFiles('autoware.repos') }}
           restore-keys: |
-            cache-amd64-no-cuda-
-            cache-amd64-
+            cache-${{ matrix.platform }}-${{ matrix.name }}-
+            cache-${{ matrix.platform }}-
 
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3.1.0
@@ -96,12 +114,12 @@ jobs:
           context: .
           push: false
           build-args: |
-            ROS_DISTRO=humble
-            BASE_IMAGE=ros:humble-ros-base-jammy
-            SETUP_ARGS=--no-nvidia
-            LIB_DIR=x86_64
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
+            ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+            BASE_IMAGE=${{ needs.load-env.outputs[format('{0}', matrix.base_image_env)] }}
+            SETUP_ARGS=${{ matrix.setup-args }}
+            LIB_DIR=${{ matrix.lib_dir }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-main
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ matrix.name }}-${{ matrix.platform }}-main,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
