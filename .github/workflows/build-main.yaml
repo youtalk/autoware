@@ -53,9 +53,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Free disk space
-        uses: ./.github/actions/free-disk-space
-
       - name: Build 'Autoware'
         if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
         uses: ./.github/actions/docker-build
