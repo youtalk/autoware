@@ -112,6 +112,8 @@ runs:
     - name: Build only
       uses: docker/bake-action@v4
       with:
+        targets: |
+          prebuilt
         push: false
         files: |
           docker/docker-bake.hcl
