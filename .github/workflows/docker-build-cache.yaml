@@ -99,8 +99,6 @@ jobs:
             *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
             *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-main
             *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
-            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:no-cuda-amd64-${{ github.head_ref }}
-            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}:-buildcache:no-cuda-amd64-${{ github.head_ref }},mode=max
             *.tags=${{ steps.meta.outputs.tags }}
 
       - name: Show disk space
