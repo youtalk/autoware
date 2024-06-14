@@ -7,11 +7,13 @@ ARG ROS_DISTRO
 
 # Install apt packages and add GitHub to known hosts for private repositories
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  rm -f /etc/apt/apt.conf.d/docker-clean \
+  && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache \
+  && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
   gosu \
   ssh \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
+  && apt-get autoremove -y \
   && mkdir -p ~/.ssh \
   && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
@@ -26,7 +28,7 @@ RUN --mount=type=ssh \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   ./setup-dev-env.sh -y --module base --runtime openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
+  && apt-get autoremove -y \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
 # Create entrypoint
@@ -44,9 +46,11 @@ WORKDIR /autoware
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  ./setup-dev-env.sh -y rosdep \
+  rm -f /etc/apt/apt.conf.d/docker-clean \
+  && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache \
+  && ./setup-dev-env.sh -y rosdep \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
+  && apt-get autoremove -y
 
 # Copy repository files
 COPY src /autoware/src
@@ -80,7 +84,7 @@ RUN --mount=type=ssh \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
+  && apt-get autoremove -y \
   && find / -name 'libcu*.a' -delete \
   && find / -name 'libnv*.a' -delete
 
@@ -92,7 +96,7 @@ RUN --mount=type=ssh \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   apt-get update \
   && cat /tmp/rosdep-all-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
+  && apt-get autoremove -y
 
 # Build Autoware
 COPY --from=src-imported /autoware/src /autoware/src
@@ -118,7 +122,7 @@ RUN --mount=type=ssh \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   ./setup-dev-env.sh -y --module dev-tools openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
+  && apt-get autoremove -y
 
 # Create entrypoint
 COPY docker/etc/ros_entrypoint.sh /ros_entrypoint.sh
@@ -142,7 +146,7 @@ RUN --mount=type=ssh \
   && pip uninstall -y ansible ansible-core \
   && apt-get update \
   && cat /tmp/rosdep-exec-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache \
+  && apt-get autoremove -y \
   && find /usr/lib/$LIB_DIR-linux-gnu -name "*.a" -type f -delete \
   && find / -name "*.o" -type f -delete \
   && find / -name "*.h" -type f -delete \
