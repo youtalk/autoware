@@ -73,6 +73,8 @@ jobs:
         with:
           path: |
             root-ccache
+            var-cache-apt
+            var-lib-apt
           key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ hashFiles('autoware.repos') }}
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-
@@ -83,7 +85,9 @@ jobs:
         with:
           cache-map: |
             {
-              "root-ccache": "/root/.ccache"
+              "root-ccache": "/root/.ccache",
+              "var-cache-apt": "/var/cache/apt",
+              "var-lib-apt": "/var/lib/apt"
             }
           skip-extraction: true
 
