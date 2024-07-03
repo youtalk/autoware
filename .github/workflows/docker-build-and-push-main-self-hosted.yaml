@@ -70,7 +70,6 @@ jobs:
 
       - name: Restore cache
         uses: actions/cache/restore@v4
-        id: cache
         with:
           path: |
             root-ccache
@@ -78,9 +77,6 @@ jobs:
           restore-keys: |
             cache-${{ matrix.platform }}-${{ matrix.name }}-
             cache-${{ matrix.platform }}-
-
-      - name: Restore cache
-        uses: actions/cache/restore@v4
 
       - name: Inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v2.1.4
