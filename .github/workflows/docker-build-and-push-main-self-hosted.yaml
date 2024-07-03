@@ -68,8 +68,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache
-        uses: actions/cache@v3
+      - name: Restore cache
+        uses: actions/cache/restore@v4
         id: cache
         with:
           path: |
@@ -87,6 +87,7 @@ jobs:
         with:
           cache-source: root-ccache
           cache-target: /root/.ccache
+          skip-extraction: true
 
       - name: Build 'Autoware'
         if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
