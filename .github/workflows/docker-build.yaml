@@ -79,8 +79,21 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache
+        uses: actions/cache@v4
+        if: ${{ matrix.name == 'no-cuda' }}
+        id: cache
+        with:
+          path: |
+            root-ccache
+          key: cache-${{ matrix.platform }}-${{ matrix.name }}-${{ hashFiles('autoware.repos') }}
+          restore-keys: |
+            cache-${{ matrix.platform }}-${{ matrix.name }}-
+            cache-${{ matrix.platform }}-
+
       - name: Restore cache
         uses: actions/cache/restore@v4
+        if: ${{ matrix.name != 'no-cuda' }}
         with:
           path: |
             root-ccache
@@ -96,7 +109,7 @@ jobs:
             {
               "root-ccache": "/root/.ccache"
             }
-          skip-extraction: true
+          skip-extraction: ${{ matrix.name != 'no-cuda' || steps.cache.outputs.cache-hit }}
 
       - name: Build 'Autoware'
         if: steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }}
