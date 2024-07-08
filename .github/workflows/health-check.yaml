@@ -18,6 +18,7 @@ jobs:
       label: tag:run-health-check
 
   load-env:
+    needs: make-sure-label-is-present
     uses: ./.github/workflows/load-env.yaml
 
   docker-build:
