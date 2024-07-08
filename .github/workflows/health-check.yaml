@@ -12,13 +12,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  make-sure-label-is-present:
+  label-cehck:
     uses: autowarefoundation/autoware-github-actions/.github/workflows/make-sure-label-is-present.yaml@v1
     with:
       label: tag:run-health-check
 
   load-env:
-    needs: make-sure-label-is-present
+    needs: label-check
     uses: ./.github/workflows/load-env.yaml
 
   docker-build:
