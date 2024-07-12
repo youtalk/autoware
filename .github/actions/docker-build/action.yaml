@@ -69,7 +69,7 @@ runs:
       with:
         path: |
           root-ccache
-        key: ccache-${{ inputs.platform }}-${{ inputs.name }}-${{ hashFiles('src/**/*.cpp') }}
+        key: cache-${{ inputs.platform }}-${{ inputs.name }}-${{ hashFiles('src/**/*.cpp') }}
         restore-keys: |
           ccache-${{ inputs.platform }}-${{ inputs.name }}-
           ccache-${{ inputs.platform }}-
