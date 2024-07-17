@@ -72,7 +72,7 @@ jobs:
             docker/**
 
       - name: Build 'Autoware'
-        if: steps.changed-files.outputs.any_changed == 'true' && (steps.author-check.outputs.author-found == 'true' || ${{ github.event_name == 'workflow_dispatch' }})
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/docker-build-and-push
         with:
           name: ${{ matrix.name }}
