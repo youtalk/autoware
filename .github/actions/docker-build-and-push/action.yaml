@@ -119,7 +119,7 @@ runs:
       id: meta-autoware-universe
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.actor }}/${{ inputs.bake-target }}
+        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-autoware-universe
         flavor: |
@@ -149,12 +149,11 @@ runs:
           latest=${{ github.event_name == 'push' && github.ref_type == 'tag' }}
           suffix=-runtime${{ inputs.tag-suffix }}
 
-    - name: Login to GitHub Container Registry
+    - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        registry: ghcr.io
         username: ${{ github.repository_owner }}
-        password: ${{ github.token }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build and Push to GitHub Container Registry
       if: ${{ github.event_name == 'push' ||
