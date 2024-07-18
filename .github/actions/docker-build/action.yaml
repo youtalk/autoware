@@ -14,6 +14,9 @@ inputs:
   build-args:
     description: ""
     required: true
+  dockerhub-token:
+    description: ""
+    required: true
 
 runs:
   using: composite
@@ -94,7 +97,7 @@ runs:
       uses: docker/login-action@v3
       with:
         username: ${{ github.repository_owner }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        password: ${{ inputs.dockerhub-token }}
 
     - name: Run docker build
       uses: docker/build-push-action@v6
@@ -103,5 +106,5 @@ runs:
         context: .
         push: false
         build-args: ${{ inputs.build-args }}
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ inputs.name }}-${{ inputs.platform }}-${{ inputs.cache-tag-suffix }}
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:${{ inputs.name }}-${{ inputs.platform }}-${{ inputs.cache-tag-suffix }},mode=max
+        cache-from: type=registry,ref=${{ github.repository }}-buildcache:${{ inputs.name }}-${{ inputs.platform }}-${{ inputs.cache-tag-suffix }}
+        cache-to: type=registry,ref=${{ github.repository }}-buildcache:${{ inputs.name }}-${{ inputs.platform }}-${{ inputs.cache-tag-suffix }},mode=max
