@@ -37,6 +37,18 @@ runs:
         vcs import src < autoware.repos
       shell: bash
 
+    - name: Cache ccache
+      uses: actions/cache@v4
+      if: ${{ inputs.name == 'no-cuda' && github.ref == 'refs/heads/main' }}
+      id: cache-ccache
+      with:
+        path: |
+          root-ccache
+        key: ccache-${{ inputs.platform }}-${{ inputs.name }}-${{ hashFiles('src/**/*.cpp') }}
+        restore-keys: |
+          ccache-${{ inputs.platform }}-${{ inputs.name }}-
+          ccache-${{ inputs.platform }}-
+
     - name: Cache apt-get
       uses: actions/cache@v4
       if: ${{ inputs.name == 'no-cuda' && github.ref == 'refs/heads/main' }}
@@ -48,6 +60,17 @@ runs:
         restore-keys: |
           apt-get-${{ inputs.platform }}-${{ inputs.name }}-
           apt-get-${{ inputs.platform }}-
+
+    - name: Restore ccache
+      uses: actions/cache/restore@v4
+      if: ${{ inputs.name != 'no-cuda' || github.ref != 'refs/heads/main' }}
+      with:
+        path: |
+          root-ccache
+        key: ccache-${{ inputs.platform }}-${{ inputs.name }}-${{ hashFiles('src/**/*.cpp') }}
+        restore-keys: |
+          ccache-${{ inputs.platform }}-${{ inputs.name }}-
+          ccache-${{ inputs.platform }}-
 
     - name: Restore apt-get
       uses: actions/cache/restore@v4
@@ -65,9 +88,10 @@ runs:
       with:
         cache-map: |
           {
+            "root-ccache": "/root/.ccache",
             "var-cache-apt": "/var/cache/apt"
           }
-        skip-extraction: ${{ steps.cache-apt-get.outputs.cache-hit }}
+        skip-extraction: ${{ steps.cache-ccache.outputs.cache-hit && steps.cache-apt-get.outputs.cache-hit }}
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
