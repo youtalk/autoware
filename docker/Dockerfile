@@ -18,7 +18,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Copy files
 COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
 COPY ansible/ /autoware/ansible/
-WORKDIR /autoware
 
 # Set up development environment
 RUN --mount=type=ssh \
@@ -28,6 +27,7 @@ RUN --mount=type=ssh \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache
 
 # Build autoware.core
+WORKDIR /autoware
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/core,target=/autoware/src/core \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
@@ -35,6 +35,8 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   && colcon build --cmake-args \
     " -Wno-dev" \
     " --no-warn-unused-cli" \
+    --merge-install \
+    --install-base /opt/autoware \
     --mixin release compile-commands ccache \
   && du -sh ${CCACHE_DIR} && ccache -s
 
@@ -58,7 +60,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Copy files
 COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
 COPY ansible/ /autoware/ansible/
-WORKDIR /autoware
 
 # Set up development environment
 RUN --mount=type=ssh \
@@ -67,7 +68,10 @@ RUN --mount=type=ssh \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache
 
+COPY --from=autoware-core /opt/autoware /opt/autoware
+
 # Build autoware.universe
+WORKDIR /autoware
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/launcher,target=/autoware/src/launcher \
   --mount=type=bind,source=src/param,target=/autoware/src/param \
@@ -76,10 +80,13 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/universe,target=/autoware/src/universe \
   --mount=type=bind,source=src/vehicle,target=/autoware/src/vehicle \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  && source /opt/autoware/setup.bash \
   && du -sh ${CCACHE_DIR} && ccache -s \
   && colcon build --cmake-args \
     " -Wno-dev" \
     " --no-warn-unused-cli" \
+    --merge-install \
+    --install-base /opt/autoware \
     --mixin release compile-commands ccache \
   && du -sh ${CCACHE_DIR} && ccache -s
 
@@ -102,21 +109,17 @@ RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
-FROM base as runtime
+FROM youtalk/autoware-base:latest-humble-runtime-base as runtime
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG LIB_DIR
 ARG SETUP_ARGS
 
-# Set up runtime environment and artifacts
-COPY --from=rosdep-depend /rosdep-exec-depend-packages.txt /tmp/rosdep-exec-depend-packages.txt
 # hadolint ignore=SC2002
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --download-artifacts --no-cuda-drivers --runtime openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get update \
-  && cat /tmp/rosdep-exec-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache \
   && find /usr/lib/$LIB_DIR-linux-gnu -name "*.a" -type f -delete \
   && find / -name "*.o" -type f -delete \
@@ -127,11 +130,11 @@ RUN --mount=type=ssh \
     /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/nvidia-docker.list \
     /usr/include /usr/share/doc /usr/lib/gcc /usr/lib/jvm /usr/lib/llvm*
 
-COPY --from=autoware-universe /autoware/install/ /autoware/install/
+COPY --from=autoware-universe /opt/autoware /opt/autoware
 
 # Copy bash aliases
 COPY docker/etc/.bash_aliases /root/.bash_aliases
-RUN echo "source /autoware/install/setup.bash" > /etc/bash.bashrc
+RUN echo "source /opt/autoware/setup.bash" > /etc/bash.bashrc
 
 # Create entrypoint
 COPY docker/etc/ros_entrypoint.sh /ros_entrypoint.sh
