@@ -1,9 +1,8 @@
-# hadolint global ignore=DL3006,DL3008,DL3013
-ARG BASE_IMAGE
-
-FROM $BASE_IMAGE as base
+FROM youtalk/autoware-base:latest-humble-autoware-core-base as autoware-core
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
+ARG SETUP_ARGS
+ENV CCACHE_DIR="/root/.ccache"
 
 # Install apt packages and add GitHub to known hosts for private repositories
 RUN rm -f /etc/apt/apt.conf.d/docker-clean \
@@ -21,70 +20,6 @@ COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /auto
 COPY ansible/ /autoware/ansible/
 WORKDIR /autoware
 
-# Set up base environment
-RUN --mount=type=ssh \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  ./setup-dev-env.sh -y --module base --runtime openadkit \
-  && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && rm -rf "$HOME"/.cache \
-  && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
-
-# Create entrypoint
-CMD ["/bin/bash"]
-
-FROM $BASE_IMAGE as rosdep-depend
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-ARG ROS_DISTRO
-
-COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
-COPY ansible/ /autoware/ansible/
-WORKDIR /autoware
-
-RUN rm -f /etc/apt/apt.conf.d/docker-clean \
-  && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
-RUN --mount=type=ssh \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  ./setup-dev-env.sh -y rosdep \
-  && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && rm -rf "$HOME"/.cache
-
-# Generate install package lists
-COPY src/core /autoware/src/core
-RUN rosdep update && rosdep keys --ignore-src --from-paths src \
-    | xargs rosdep resolve --rosdistro ${ROS_DISTRO} \
-    | grep -v '^#' \
-    | sed 's/ \+/\n/g'\
-    | sort \
-    > /rosdep-core-depend-packages.txt \
-    && cat /rosdep-core-depend-packages.txt
-COPY src/launcher /autoware/src/launcher
-COPY src/param /autoware/src/param
-COPY src/sensor_component /autoware/src/sensor_component
-COPY src/sensor_kit /autoware/src/sensor_kit
-COPY src/universe /autoware/src/universe
-COPY src/vehicle /autoware/src/vehicle
-RUN rosdep keys --ignore-src --from-paths src \
-    | xargs rosdep resolve --rosdistro ${ROS_DISTRO} \
-    | grep -v '^#' \
-    | sed 's/ \+/\n/g'\
-    | sort \
-    > /rosdep-universe-depend-packages.txt \
-    && cat /rosdep-universe-depend-packages.txt
-RUN rosdep keys --dependency-types=exec --ignore-src --from-paths src \
-    | xargs rosdep resolve --rosdistro ${ROS_DISTRO} \
-    | grep -v '^#' \
-    | sed 's/ \+/\n/g'\
-    | sort \
-    > /rosdep-exec-depend-packages.txt \
-    && cat /rosdep-exec-depend-packages.txt
-
-FROM base as autoware-core
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-ARG ROS_DISTRO
-ARG SETUP_ARGS
-ENV CCACHE_DIR="/root/.ccache"
-
-# cspell: ignore libcu libnv
 # Set up development environment
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -92,16 +27,9 @@ RUN --mount=type=ssh \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache
 
-# Install rosdep dependencies
-COPY --from=rosdep-depend /rosdep-core-depend-packages.txt /tmp/rosdep-core-depend-packages.txt
-# hadolint ignore=SC2002
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  apt-get update \
-  && cat /tmp/rosdep-core-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
-  && apt-get autoremove -y && rm -rf "$HOME"/.cache
-
-RUN --mount=type=bind,from=rosdep-depend,source=/autoware/src/core,target=/autoware/src/core \
-  --mount=type=cache,target=${CCACHE_DIR} \
+# Build autoware.core
+RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,source=src/core,target=/autoware/src/core \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && du -sh ${CCACHE_DIR} && ccache -s \
   && colcon build --cmake-args \
@@ -110,30 +38,43 @@ RUN --mount=type=bind,from=rosdep-depend,source=/autoware/src/core,target=/autow
     --mixin release compile-commands ccache \
   && du -sh ${CCACHE_DIR} && ccache -s
 
-FROM autoware-core as autoware-universe
+FROM youtalk/autoware-base:latest-humble-autoware-universe-base as autoware-universe
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
 ENV CCACHE_DIR="/root/.ccache"
 
-# Install rosdep dependencies
-COPY --from=rosdep-depend /rosdep-universe-depend-packages.txt /tmp/rosdep-universe-depend-packages.txt
-# hadolint ignore=SC2002
-RUN --mount=type=ssh \
-  apt-get update \
-  && cat /tmp/rosdep-universe-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
-
+# Install apt packages and add GitHub to known hosts for private repositories
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+  && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  apt-get update \
-  && apt-get install -y --no-install-recommends \
-    ros-"$ROS_DISTRO"-rosbag2-storage \
-    ros-"$ROS_DISTRO"-rosbag2-storage-mcap \
-  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
+  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+  gosu \
+  ssh \
+  && apt-get autoremove -y && rm -rf "$HOME"/.cache \
+  && mkdir -p ~/.ssh \
+  && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-# Build Autoware
-RUN --mount=type=bind,from=rosdep-depend,source=/autoware/src,target=/autoware/src \
-  --mount=type=cache,target=${CCACHE_DIR} \
+# Copy files
+COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
+COPY ansible/ /autoware/ansible/
+WORKDIR /autoware
+
+# Set up development environment
+RUN --mount=type=ssh \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
+  && pip uninstall -y ansible ansible-core \
+  && apt-get autoremove -y && rm -rf "$HOME"/.cache
+
+# Build autoware.universe
+RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,source=src/launcher,target=/autoware/src/launcher \
+  --mount=type=bind,source=src/param,target=/autoware/src/param \
+  --mount=type=bind,source=src/sensor_component,target=/autoware/src/sensor_component \
+  --mount=type=bind,source=src/sensor_kit,target=/autoware/src/sensor_kit \
+  --mount=type=bind,source=src/universe,target=/autoware/src/universe \
+  --mount=type=bind,source=src/vehicle,target=/autoware/src/vehicle \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && du -sh ${CCACHE_DIR} && ccache -s \
   && colcon build --cmake-args \
