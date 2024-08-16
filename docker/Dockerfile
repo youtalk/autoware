@@ -22,9 +22,11 @@ COPY ansible/ /autoware/ansible/
 # Set up development environment
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  ./setup-dev-env.sh -y --module base --runtime openadkit \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && rm -rf "$HOME"/.cache
+  && apt-get autoremove -y && rm -rf "$HOME"/.cache \
+  && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
 # Build autoware.core
 WORKDIR /autoware
@@ -64,9 +66,11 @@ COPY ansible/ /autoware/ansible/
 # Set up development environment
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  ./setup-dev-env.sh -y --module base --runtime openadkit \
   ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
-  && apt-get autoremove -y && rm -rf "$HOME"/.cache
+  && apt-get autoremove -y && rm -rf "$HOME"/.cache \
+  && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
 COPY --from=autoware-core /opt/autoware /opt/autoware
 
