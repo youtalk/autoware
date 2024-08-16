@@ -124,7 +124,8 @@ ARG SETUP_ARGS
 # hadolint ignore=SC2002
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --download-artifacts --no-cuda-drivers --runtime openadkit \
+  ./setup-dev-env.sh -y --module base --runtime openadkit \
+  && ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --download-artifacts --no-cuda-drivers --runtime openadkit \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache \
   && find /usr/lib/$LIB_DIR-linux-gnu -name "*.a" -type f -delete \
