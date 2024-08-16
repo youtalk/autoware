@@ -25,7 +25,7 @@ WORKDIR /autoware
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   ./setup-dev-env.sh -y --module base --runtime openadkit \
-  ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
+  && ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
@@ -70,7 +70,7 @@ WORKDIR /autoware
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   ./setup-dev-env.sh -y --module base --runtime openadkit \
-  ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
+  && ./setup-dev-env.sh -y --module all ${SETUP_ARGS} --no-cuda-drivers openadkit \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
