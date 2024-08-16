@@ -19,6 +19,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
 COPY ansible/ /autoware/ansible/
 
+WORKDIR /autoware
+
 # Set up development environment
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -29,7 +31,6 @@ RUN --mount=type=ssh \
   && echo "source /opt/ros/${ROS_DISTRO}/setup.bash" > /etc/bash.bashrc
 
 # Build autoware.core
-WORKDIR /autoware
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/core,target=/autoware/src/core \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
@@ -63,6 +64,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
 COPY ansible/ /autoware/ansible/
 
+WORKDIR /autoware
+
 # Set up development environment
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -75,7 +78,6 @@ RUN --mount=type=ssh \
 COPY --from=autoware-core /opt/autoware /opt/autoware
 
 # Build autoware.universe
-WORKDIR /autoware
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/launcher,target=/autoware/src/launcher \
   --mount=type=bind,source=src/param,target=/autoware/src/param \
