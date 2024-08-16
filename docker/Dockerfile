@@ -121,7 +121,23 @@ ARG ROS_DISTRO
 ARG LIB_DIR
 ARG SETUP_ARGS
 
-# hadolint ignore=SC2002
+# Install apt packages and add GitHub to known hosts for private repositories
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+  && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+  gosu \
+  ssh \
+  && apt-get autoremove -y && rm -rf "$HOME"/.cache \
+  && mkdir -p ~/.ssh \
+  && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# Copy files
+COPY setup-dev-env.sh ansible-galaxy-requirements.yaml amd64.env arm64.env /autoware/
+COPY ansible/ /autoware/ansible/
+
+WORKDIR /autoware
+
 RUN --mount=type=ssh \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   ./setup-dev-env.sh -y --module base --runtime openadkit \
