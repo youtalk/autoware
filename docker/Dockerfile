@@ -1,4 +1,4 @@
-FROM youtalk/autoware-base:latest-humble-autoware-core-base as autoware-core
+FROM youtalk/autoware-base:latest-humble-autoware-core-base AS autoware-core
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
     --mixin release compile-commands ccache \
   && du -sh ${CCACHE_DIR} && ccache -s
 
-FROM youtalk/autoware-base:latest-humble-autoware-universe-base as autoware-universe
+FROM youtalk/autoware-base:latest-humble-autoware-universe-base AS autoware-universe
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG SETUP_ARGS
@@ -92,7 +92,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
 
 CMD ["/bin/bash"]
 
-FROM autoware-universe as devel
+FROM autoware-universe AS devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install development tools and artifacts
@@ -109,7 +109,7 @@ RUN chmod +x /ros_entrypoint.sh
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
-FROM youtalk/autoware-base:latest-humble-runtime-base as runtime
+FROM youtalk/autoware-base:latest-humble-runtime-base AS runtime
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG LIB_DIR
