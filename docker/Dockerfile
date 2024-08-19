@@ -75,7 +75,6 @@ RUN --mount=type=ssh \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache
 
-COPY src /autoware/src
 # Create entrypoint
 COPY docker/etc/ros_entrypoint.sh /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
@@ -91,6 +90,12 @@ RUN --mount=type=ssh \
   ./setup-dev-env.sh -y --module dev-tools openadkit \
   && pip uninstall -y ansible ansible-core \
   && apt-get autoremove -y && rm -rf "$HOME"/.cache
+
+# Create entrypoint
+COPY docker/etc/ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["/bin/bash"]
 
 FROM youtalk/autoware-base:latest-humble-runtime-base AS runtime
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
