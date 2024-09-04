@@ -62,6 +62,7 @@ RUN rosdep update && rosdep keys --ignore-src --from-paths src \
     | sort \
     > /rosdep-core-depend-packages.txt \
     && cat /rosdep-core-depend-packages.txt
+
 COPY src/universe/external /autoware/src/universe/external
 COPY src/universe/autoware.universe/common /autoware/src/universe/autoware.universe/common
 # TODO(youtalk): Remove COPYs when https://github.com/autowarefoundation/autoware.universe/issues/8695 is resolved
@@ -74,6 +75,17 @@ RUN rosdep keys --ignore-src --from-paths src \
     | sort \
     > /rosdep-universe-common-depend-packages.txt \
     && cat /rosdep-universe-common-depend-packages.txt
+
+COPY src/universe/autoware.universe/perception /autoware/src/universe/autoware.universe/perception
+COPY src/universe/autoware.universe/sensing /autoware/src/universe/autoware.universe/sensing
+RUN rosdep keys --ignore-src --from-paths src \
+    | xargs rosdep resolve --rosdistro ${ROS_DISTRO} \
+    | grep -v '^#' \
+    | sed 's/ \+/\n/g'\
+    | sort \
+    > /rosdep-universe-sensing-perception-depend-packages.txt \
+    && cat /rosdep-universe-sensing-perception-depend-packages.txt
+
 COPY src/launcher /autoware/src/launcher
 COPY src/param /autoware/src/param
 COPY src/sensor_component /autoware/src/sensor_component
@@ -87,6 +99,7 @@ RUN rosdep keys --ignore-src --from-paths src \
     | sort \
     > /rosdep-universe-depend-packages.txt \
     && cat /rosdep-universe-depend-packages.txt
+
 RUN rosdep keys --dependency-types=exec --ignore-src --from-paths src \
     | xargs rosdep resolve --rosdistro ${ROS_DISTRO} \
     | grep -v '^#' \
@@ -167,6 +180,37 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
+FROM universe-common-devel AS universe-sensing-perception-devel
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG ROS_DISTRO
+ENV CCACHE_DIR="/root/.ccache"
+
+# Install rosdep dependencies
+COPY --from=rosdep-depend /rosdep-universe-sensing-perception-depend-packages.txt /tmp/rosdep-universe-sensing-perception-depend-packages.txt
+# hadolint ignore=SC2002
+RUN --mount=type=ssh \
+  apt-get update \
+  && cat /tmp/rosdep-universe-sensing-perception-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
+  && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
+
+# hadolint ignore=SC1091
+RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/perception,target=/autoware/src/universe/autoware.universe/perception \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/sensing,target=/autoware/src/universe/autoware.universe/sensing \
+  source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  && source /opt/autoware/setup.bash \
+  && du -sh ${CCACHE_DIR} && ccache -s \
+  && colcon build --cmake-args \
+    " -Wno-dev" \
+    " --no-warn-unused-cli" \
+    --merge-install \
+    --install-base /opt/autoware \
+    --mixin release compile-commands ccache \
+  && du -sh ${CCACHE_DIR} && ccache -s \
+  && rm -rf /autoware/build
+
+CMD ["/bin/bash"]
+
 FROM universe-common-devel AS universe-devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
@@ -180,6 +224,7 @@ RUN --mount=type=ssh \
   && cat /tmp/rosdep-universe-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* "$HOME"/.cache
 
+COPY --from=universe-sensing-perception-devel /opt/autoware /opt/autoware
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/launcher,target=/autoware/src/launcher \
@@ -191,9 +236,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/launch,target=/autoware/src/universe/autoware.universe/launch \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/localization,target=/autoware/src/universe/autoware.universe/localization \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/map,target=/autoware/src/universe/autoware.universe/map \
-  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/perception,target=/autoware/src/universe/autoware.universe/perception \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/planning,target=/autoware/src/universe/autoware.universe/planning \
-  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/sensing,target=/autoware/src/universe/autoware.universe/sensing \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/simulator,target=/autoware/src/universe/autoware.universe/simulator \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/system,target=/autoware/src/universe/autoware.universe/system \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/tools,target=/autoware/src/universe/autoware.universe/tools \
