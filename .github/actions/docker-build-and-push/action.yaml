@@ -118,7 +118,7 @@ runs:
       id: meta-universe-sensing-perception-devel
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
+        images: ${{ github.repository_owner }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-universe-sensing-perception-devel
         flavor: |
@@ -129,7 +129,7 @@ runs:
       id: meta-universe-sensing-perception
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.bake-target }}
+        images: ${{ github.repository_owner }}/${{ inputs.bake-target }}
         tags: ${{ steps.set-docker-tags.outputs.tags }}
         bake-target: docker-metadata-action-universe-sensing-perception
         flavor: |
