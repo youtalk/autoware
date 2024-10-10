@@ -99,6 +99,18 @@ runs:
         flavor: |
           latest=false
 
+    - name: Docker meta for autoware:trt-lightnet
+      id: meta-trt-lightnet
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ github.repository_owner }}/${{ inputs.bake-target }}
+        tags: |
+          type=raw,value=trt-lightnet${{ inputs.tag-suffix }}-${{ inputs.platform }}
+          type=raw,value=trt-lightnet${{ inputs.tag-suffix }}-${{ steps.date.outputs.date }}-${{ inputs.platform }}
+        bake-target: docker-metadata-action-trt-lightnet
+        flavor: |
+          latest=false
+
     - name: Docker meta for autoware:universe-sensing-perception-devel
       id: meta-universe-sensing-perception-devel
       uses: docker/metadata-action@v5
@@ -233,6 +245,7 @@ runs:
           docker/docker-bake.hcl
           ${{ steps.meta-base.outputs.bake-file }}
           ${{ steps.meta-core-devel.outputs.bake-file }}
+          ${{ steps.meta-trt-lightnet.outputs.bake-file }}
           ${{ steps.meta-universe-sensing-perception-devel.outputs.bake-file }}
           ${{ steps.meta-universe-sensing-perception.outputs.bake-file }}
           ${{ steps.meta-universe-localization-mapping-devel.outputs.bake-file }}
