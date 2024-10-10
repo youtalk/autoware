@@ -84,6 +84,10 @@ repositories:
     url: https://github.com/tier4/glog.git
     version: v0.6.0_t4-ros
   # launcher
+  universe/external/trt-lightnet
+    type: git
+    url: https://github.com/tier4/trt-lightnet.git
+    version: main
   launcher/autoware_launch:
     type: git
     url: https://github.com/autowarefoundation/autoware_launch.git

@@ -259,6 +259,24 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
+FROM universe-common-devel AS trt-lightnet
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# https://github.com/tier4/trt-lightnet/blob/main/Dockerfile
+RUN apt update -y \
+  && apt upgrade -y \
+  && apt install -y build-essential software-properties-common git cmake wget libgflags-dev libboost-all-dev libopencv-dev
+
+# Build app
+RUN mkdir -p /opt/app
+COPY src/universe/external/trt-lightnet /opt/app
+WORKDIR /opt/app
+RUN mkdir -p build && cd build && cmake .. && make -j
+
+# Default CMD
+ENTRYPOINT ["/opt/app/docker-entrypoint.sh"]
+CMD ["/bin/bash"]
+
 FROM universe-common-devel AS universe-sensing-perception-devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
