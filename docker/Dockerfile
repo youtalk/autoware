@@ -269,7 +269,7 @@ RUN apt update -y \
 
 # Build app
 RUN mkdir -p /opt/app
-COPY src/universe/external/trt-lightnet /opt/app
+COPY src/universe/trt-lightnet /opt/app
 WORKDIR /opt/app
 RUN mkdir -p build && cd build && cmake .. && make -j
 
