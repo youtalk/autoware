@@ -2,6 +2,7 @@ group "default" {
   targets = [
     "base",
     "core-devel",
+    "trt-lightnet",
     "universe-sensing-perception-devel",
     "universe-sensing-perception",
     "universe-localization-mapping-devel",
@@ -18,6 +19,7 @@ group "default" {
 // For docker/metadata-action
 target "docker-metadata-action-base" {}
 target "docker-metadata-action-core-devel" {}
+target "docker-metadata-action-trt-lightnet" {}
 target "docker-metadata-action-universe-sensing-perception-devel" {}
 target "docker-metadata-action-universe-sensing-perception" {}
 target "docker-metadata-action-universe-localization-mapping-devel" {}
