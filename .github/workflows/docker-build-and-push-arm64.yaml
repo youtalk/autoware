@@ -65,7 +65,7 @@ jobs:
             *.args.LIB_DIR=aarch64
             *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.head_ref }}
             *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.head_ref }}
+            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.head_ref }},mode=max
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Show disk space
