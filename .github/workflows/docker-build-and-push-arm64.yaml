@@ -1,6 +1,7 @@
 name: docker-build-and-push-arm64
 
 on:
+  pull_request:
   push:
     branches:
       - main
