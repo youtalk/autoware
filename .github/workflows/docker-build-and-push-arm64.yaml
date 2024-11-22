@@ -13,7 +13,7 @@ jobs:
 
   docker-build-and-push:
     needs: load-env
-    runs-on: buildjet-8vcpu-ubuntu-2204-arm
+    runs-on: buildjet-16vcpu-ubuntu-2204-arm
     steps:
       - name: Check if PR author is the specific user
         id: author-check
@@ -63,10 +63,9 @@ jobs:
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
             *.args.LIB_DIR=aarch64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
 
       - name: Show disk space
         if: always()
@@ -111,10 +110,9 @@ jobs:
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
             *.args.LIB_DIR=aarch64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
 
       - name: Show disk space
         if: always()
