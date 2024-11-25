@@ -438,7 +438,7 @@ RUN echo "source /opt/autoware/setup.bash" > /etc/bash.bashrc
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
-FROM base-cuda AS universe-sensing-perception-cuda
+FROM base AS universe-sensing-perception-cuda
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG LIB_DIR
