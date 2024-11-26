@@ -27,6 +27,7 @@ jobs:
             *.platform=linux/amd64
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   autoware-base-arm64:
     needs: [load-env, autoware-base-amd64]
@@ -49,3 +50,4 @@ jobs:
             *.platform=linux/arm64
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
