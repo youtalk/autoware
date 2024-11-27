@@ -11,10 +11,19 @@ inputs:
   build-args:
     description: Additional build args.
     required: false
+  dockerhub-token:
+    description: Docker Hub token.
+    required: true
 
 runs:
   using: composite
   steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ github.repository_owner }}
+        password: ${{ inputs.dockerhub-token }}
+
     - name: Install jq and vcstool
       run: |
         sudo apt-get -y update
@@ -68,7 +77,7 @@ runs:
       id: meta-base-cuda
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=base-cuda-${{ inputs.platform }}
           type=raw,value=base-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
@@ -80,7 +89,7 @@ runs:
       id: meta-universe-sensing-perception-devel-cuda
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=universe-sensing-perception-devel-cuda-${{ inputs.platform }}
           type=raw,value=universe-sensing-perception-devel-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
@@ -92,7 +101,7 @@ runs:
       id: meta-universe-sensing-perception-cuda
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=universe-sensing-perception-cuda-${{ inputs.platform }}
           type=raw,value=universe-sensing-perception-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
@@ -104,7 +113,7 @@ runs:
       id: meta-universe-devel-cuda
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=universe-devel-cuda-${{ inputs.platform }}
           type=raw,value=universe-devel-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
@@ -116,7 +125,7 @@ runs:
       id: meta-universe-cuda
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=universe-cuda-${{ inputs.platform }}
           type=raw,value=universe-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
@@ -124,14 +133,7 @@ runs:
         flavor: |
           latest=auto
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ github.token }}
-
-    - name: Build and Push to GitHub Container Registry
+    - name: Build and Push to Docker Hub
       uses: docker/bake-action@v5
       with:
         push: true
