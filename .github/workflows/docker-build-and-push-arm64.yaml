@@ -65,10 +65,9 @@ jobs:
             *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
             *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
             *.args.LIB_DIR=aarch64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
 
       - name: Show disk space
         if: always()
@@ -115,10 +114,9 @@ jobs:
             *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
             *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
             *.args.LIB_DIR=aarch64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:arm64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-main
+            *.cache-to=type=registry,ref=ghcr.io/${{ github.repository }}-buildcache:arm64-${{ github.ref_name }},mode=max
 
       - name: Show disk space
         if: always()
