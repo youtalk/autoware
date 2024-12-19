@@ -5,6 +5,7 @@ on:
     branches:
       - main
     tags:
+      - "*.*.*"
   workflow_dispatch:
 
 jobs:
@@ -48,6 +49,12 @@ jobs:
             ansible-galaxy-requirements.yaml
             ansible/**
             docker/**
+
+      - name: Free disk space
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && github.ref_type == 'tag') }}
+        uses: ./.github/actions/free-disk-space
 
       - name: Build 'Autoware' without CUDA
         if: ${{ steps.author-check.outputs.author-found == 'true' ||
@@ -99,6 +106,12 @@ jobs:
             ansible-galaxy-requirements.yaml
             ansible/**
             docker/**
+
+      - name: Free disk space
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && github.ref_type == 'tag') }}
+        uses: ./.github/actions/free-disk-space
 
       - name: Build 'Autoware' with CUDA
         if: ${{ steps.changed-files.outputs.any_changed == 'true' ||

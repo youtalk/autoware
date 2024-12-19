@@ -81,6 +81,7 @@ runs:
         tags: |
           type=raw,value=universe-sensing-perception-devel-cuda-${{ inputs.platform }}
           type=raw,value=universe-sensing-perception-devel-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
+          type=ref,event=tag,prefix=universe-sensing-perception-devel-cuda-,suffix=-${{ inputs.platform }}
         bake-target: docker-metadata-action-universe-sensing-perception-devel-cuda
         flavor: |
           latest=false
@@ -93,6 +94,7 @@ runs:
         tags: |
           type=raw,value=universe-sensing-perception-cuda-${{ inputs.platform }}
           type=raw,value=universe-sensing-perception-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
+          type=ref,event=tag,prefix=universe-sensing-perception-cuda-,suffix=-${{ inputs.platform }}
         bake-target: docker-metadata-action-universe-sensing-perception-cuda
         flavor: |
           latest=false
@@ -105,6 +107,7 @@ runs:
         tags: |
           type=raw,value=universe-devel-cuda-${{ inputs.platform }}
           type=raw,value=universe-devel-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
+          type=ref,event=tag,prefix=universe-devel-cuda-,suffix=-${{ inputs.platform }}
         bake-target: docker-metadata-action-universe-devel-cuda
         flavor: |
           latest=false
@@ -117,9 +120,10 @@ runs:
         tags: |
           type=raw,value=universe-cuda-${{ inputs.platform }}
           type=raw,value=universe-cuda-${{ steps.date.outputs.date }}-${{ inputs.platform }}
+          type=ref,event=tag,prefix=universe-cuda-,suffix=-${{ inputs.platform }}
         bake-target: docker-metadata-action-universe-cuda
         flavor: |
-          latest=auto
+          latest=false
 
     - name: Build and Push to Docker Hub
       uses: docker/bake-action@v5
