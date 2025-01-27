@@ -51,6 +51,8 @@ FROM rosdep-depend AS rosdep-universe-sensing-perception-depend
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+COPY src/universe/autoware.universe/launch/tier4_perception_launch /autoware/src/universe/autoware.universe/launch/tier4_perception_launch
+COPY src/universe/autoware.universe/launch/tier4_sensing_launch /autoware/src/universe/autoware.universe/launch/tier4_sensing_launch
 COPY src/universe/autoware.universe/perception /autoware/src/universe/autoware.universe/perception
 COPY src/universe/autoware.universe/sensing /autoware/src/universe/autoware.universe/sensing
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
@@ -64,6 +66,8 @@ FROM rosdep-depend AS rosdep-universe-localization-mapping-depend
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+COPY src/universe/autoware.universe/launch/tier4_localization_launch /autoware/src/universe/autoware.universe/launch/tier4_localization_launch  
+COPY src/universe/autoware.universe/launch/tier4_map_launch /autoware/src/universe/autoware.universe/launch/tier4_map_launch
 COPY src/universe/autoware.universe/localization /autoware/src/universe/autoware.universe/localization
 COPY src/universe/autoware.universe/map /autoware/src/universe/autoware.universe/map
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
@@ -77,6 +81,8 @@ FROM rosdep-depend AS rosdep-universe-planning-control-depend
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+COPY src/universe/autoware.universe/launch/tier4_control_launch /autoware/src/universe/autoware.universe/launch/tier4_control_launch
+COPY src/universe/autoware.universe/launch/tier4_planning_launch /autoware/src/universe/autoware.universe/launch/tier4_planning_launch
 COPY src/universe/autoware.universe/control /autoware/src/universe/autoware.universe/control
 COPY src/universe/autoware.universe/planning /autoware/src/universe/autoware.universe/planning
 # TODO(youtalk): Remove COPYs when https://github.com/autowarefoundation/autoware.universe/issues/8805 is resolved
@@ -95,6 +101,8 @@ FROM rosdep-depend AS rosdep-universe-vehicle-system-depend
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+COPY src/universe/autoware.universe/launch/tier4_vehicle_launch /autoware/src/universe/autoware.universe/launch/tier4_vehicle_launch
+COPY src/universe/autoware.universe/launch/tier4_system_launch /autoware/src/universe/autoware.universe/launch/tier4_system_launch
 COPY src/universe/autoware.universe/vehicle /autoware/src/universe/autoware.universe/vehicle
 COPY src/universe/autoware.universe/system /autoware/src/universe/autoware.universe/system
 COPY src/universe/autoware.universe/map/autoware_map_height_fitter /autoware/src/universe/autoware.universe/map/autoware_map_height_fitter
@@ -211,6 +219,8 @@ RUN --mount=type=ssh \
 
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_perception_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_perception_launch \
+  --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_sensing_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_sensing_launch \
   --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/perception,target=/autoware/src/universe/autoware.universe/perception \
   --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/sensing,target=/autoware/src/universe/autoware.universe/sensing \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
@@ -263,6 +273,8 @@ RUN --mount=type=ssh \
 
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-universe-localization-mapping-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_localization_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_localization_launch \
+  --mount=type=bind,from=rosdep-universe-localization-mapping-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_map_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_map_launch \
   --mount=type=bind,from=rosdep-universe-localization-mapping-depend,source=/autoware/src/universe/autoware.universe/localization,target=/autoware/src/universe/autoware.universe/localization \
   --mount=type=bind,from=rosdep-universe-localization-mapping-depend,source=/autoware/src/universe/autoware.universe/map,target=/autoware/src/universe/autoware.universe/map \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
@@ -285,6 +297,8 @@ RUN --mount=type=ssh \
 
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-universe-planning-control-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_control_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_control_launch \
+  --mount=type=bind,from=rosdep-universe-planning-control-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_planning_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_planning_launch \
   --mount=type=bind,from=rosdep-universe-planning-control-depend,source=/autoware/src/universe/autoware.universe/control,target=/autoware/src/universe/autoware.universe/control \
   --mount=type=bind,from=rosdep-universe-planning-control-depend,source=/autoware/src/universe/autoware.universe/planning,target=/autoware/src/universe/autoware.universe/planning \
   # TODO(youtalk): Remove --mount options when https://github.com/autowarefoundation/autoware.universe/issues/8805 is resolved
@@ -315,6 +329,8 @@ RUN --mount=type=ssh \
 
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-universe-vehicle-system-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_vehicle_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_vehicle_launch \
+  --mount=type=bind,from=rosdep-universe-vehicle-system-depend,source=/autoware/src/universe/autoware.universe/launch/tier4_system_launch,target=/autoware/src/universe/autoware.universe/launch/tier4_system_launch \
   --mount=type=bind,from=rosdep-universe-vehicle-system-depend,source=/autoware/src/universe/autoware.universe/vehicle,target=/autoware/src/universe/autoware.universe/vehicle \
   --mount=type=bind,from=rosdep-universe-vehicle-system-depend,source=/autoware/src/universe/autoware.universe/system,target=/autoware/src/universe/autoware.universe/system \
   --mount=type=bind,from=rosdep-universe-vehicle-system-depend,source=/autoware/src/universe/autoware.universe/map/autoware_map_height_fitter,target=/autoware/src/universe/autoware.universe/map/autoware_map_height_fitter \
