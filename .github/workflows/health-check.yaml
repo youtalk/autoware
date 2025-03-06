@@ -13,16 +13,16 @@ on:
 
 jobs:
   require-label:
-    if: ${{ github.event_name == 'pull_request' }}
     uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
     with:
       label: tag:run-health-check
 
   load-env:
     needs: require-label
-    if: ${{ (github.event_name == 'pull_request' && needs.require-label.outputs.result == 'true') ||
+    if: ${{ always() && (
+      needs.require-label.outputs.result == 'true' ||
       github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' }}
+      github.event_name == 'workflow_dispatch') }}
     uses: ./.github/workflows/load-env.yaml
 
   docker-build:
