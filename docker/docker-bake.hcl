@@ -1,9 +1,9 @@
 group "default" {
   targets = [
-    "core-common-devel",
+    "core-external-devel",
     "core",
     "core-devel",
-    "universe-common-devel",
+    "universe-external-devel",
     "universe-sensing-perception-devel",
     "universe-sensing-perception",
     "universe-localization-mapping-devel",
@@ -20,10 +20,10 @@ group "default" {
 }
 
 // For docker/metadata-action
-target "docker-metadata-action-core-common-devel" {}
+target "docker-metadata-action-core-external-devel" {}
 target "docker-metadata-action-core" {}
 target "docker-metadata-action-core-devel" {}
-target "docker-metadata-action-universe-common-devel" {}
+target "docker-metadata-action-universe-external-devel" {}
 target "docker-metadata-action-universe-sensing-perception-devel" {}
 target "docker-metadata-action-universe-sensing-perception" {}
 target "docker-metadata-action-universe-localization-mapping-devel" {}
@@ -37,10 +37,10 @@ target "docker-metadata-action-universe-visualization" {}
 target "docker-metadata-action-universe-devel" {}
 target "docker-metadata-action-universe" {}
 
-target "core-common-devel" {
-  inherits = ["docker-metadata-action-core-common-devel"]
+target "core-external-devel" {
+  inherits = ["docker-metadata-action-core-external-devel"]
   dockerfile = "docker/Dockerfile"
-  target = "core-common-devel"
+  target = "core-external-devel"
 }
 
 target "core" {
@@ -55,10 +55,10 @@ target "core-devel" {
   target = "core-devel"
 }
 
-target "universe-common-devel" {
-  inherits = ["docker-metadata-action-universe-common-devel"]
+target "universe-external-devel" {
+  inherits = ["docker-metadata-action-universe-external-devel"]
   dockerfile = "docker/Dockerfile"
-  target = "universe-common-devel"
+  target = "universe-external-devel"
 }
 
 target "universe-sensing-perception-devel" {

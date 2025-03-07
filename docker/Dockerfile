@@ -31,11 +31,11 @@ COPY src/core/autoware_lanelet2_extension /autoware/src/core/autoware_lanelet2_e
 COPY src/core/autoware_msgs /autoware/src/core/autoware_msgs
 COPY src/core/autoware_utils /autoware/src/core/autoware_utils
 RUN rosdep update && /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
-  > /rosdep-core-common-depend-packages.txt \
-  && cat /rosdep-core-common-depend-packages.txt
+  > /rosdep-core-external-depend-packages.txt \
+  && cat /rosdep-core-external-depend-packages.txt
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} --dependency-types=exec \
-  > /rosdep-core-common-exec-depend-packages.txt \
-  && cat /rosdep-core-common-exec-depend-packages.txt
+  > /rosdep-core-external-exec-depend-packages.txt \
+  && cat /rosdep-core-external-exec-depend-packages.txt
 
 COPY src/core/autoware.core /autoware/src/core/autoware.core
 RUN rosdep update && /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
@@ -46,6 +46,10 @@ RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} --dependency-ty
   && cat /rosdep-core-exec-depend-packages.txt
 
 COPY src/universe/external /autoware/src/universe/external
+RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
+  > /rosdep-universe-external-depend-packages.txt \
+  && cat /rosdep-universe-external-depend-packages.txt
+
 COPY src/universe/autoware.universe/common /autoware/src/universe/autoware.universe/common
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
   > /rosdep-universe-common-depend-packages.txt \
@@ -141,7 +145,7 @@ RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} --dependency-ty
   && cat /rosdep-exec-depend-packages.txt
 
 # hadolint ignore=DL3006
-FROM $AUTOWARE_BASE_IMAGE AS core-common-devel
+FROM $AUTOWARE_BASE_IMAGE AS core-external-devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ENV CCACHE_DIR="/root/.ccache"
@@ -158,11 +162,11 @@ RUN --mount=type=ssh \
   && /autoware/cleanup_apt.sh
 
 # Install rosdep dependencies
-COPY --from=rosdep-depend /rosdep-core-common-depend-packages.txt /tmp/rosdep-core-common-depend-packages.txt
+COPY --from=rosdep-depend /rosdep-core-external-depend-packages.txt /tmp/rosdep-core-external-depend-packages.txt
 # hadolint ignore=SC2002
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   apt-get update \
-  && cat /tmp/rosdep-core-common-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
+  && cat /tmp/rosdep-core-external-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
   && /autoware/cleanup_apt.sh
 
 RUN --mount=type=cache,target=${CCACHE_DIR} \
@@ -178,7 +182,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
-FROM core-common-devel AS core-devel
+FROM core-external-devel AS core-devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ENV CCACHE_DIR="/root/.ccache"
@@ -199,7 +203,31 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
 
-FROM core-devel AS universe-common-devel
+FROM core-devel AS universe-external-devel
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG ROS_DISTRO
+ENV CCACHE_DIR="/root/.ccache"
+
+# Install rosdep dependencies
+COPY --from=rosdep-depend /rosdep-universe-external-depend-packages.txt /tmp/rosdep-universe-external-depend-packages.txt
+# hadolint ignore=SC2002
+RUN --mount=type=ssh \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  apt-get update \
+  && cat /tmp/rosdep-universe-external-depend-packages.txt | xargs apt-get install -y --no-install-recommends \
+  && /autoware/cleanup_apt.sh
+
+# hadolint ignore=SC1091
+RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external,target=/autoware/src/universe/external \
+  source /opt/ros/"$ROS_DISTRO"/setup.bash \
+  && source /opt/autoware/setup.bash \
+  && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["/bin/bash"]
+
+FROM universe-external-devel AS universe-common-devel
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ENV CCACHE_DIR="/root/.ccache"
@@ -216,7 +244,6 @@ RUN --mount=type=ssh \
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/common,target=/autoware/src/universe/autoware.universe/common \
-  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external,target=/autoware/src/universe/external \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && source /opt/autoware/setup.bash \
   && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
