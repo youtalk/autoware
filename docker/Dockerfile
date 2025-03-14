@@ -45,7 +45,8 @@ RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} --dependency-ty
   > /rosdep-core-exec-depend-packages.txt \
   && cat /rosdep-core-exec-depend-packages.txt
 
-COPY src/universe/external /autoware/src/universe/external
+COPY src/universe/external /autoware/src/universe/
+RUN rm -rf /autoware/src/universe/external/trt_batched_nms
 COPY src/universe/autoware.universe/common /autoware/src/universe/autoware.universe/common
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
   > /rosdep-universe-common-depend-packages.txt \
@@ -67,6 +68,7 @@ FROM rosdep-depend AS rosdep-universe-sensing-perception-depend
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
+COPY src/universe/external/trt_batched_nms /autoware/src/universe/external/trt_batched_nms
 COPY src/universe/autoware.universe/perception /autoware/src/universe/autoware.universe/perception
 COPY src/universe/autoware.universe/sensing /autoware/src/universe/autoware.universe/sensing
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
@@ -216,7 +218,15 @@ RUN --mount=type=ssh \
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/autoware.universe/common,target=/autoware/src/universe/autoware.universe/common \
-  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external,target=/autoware/src/universe/external \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/eagleye,target=/autoware/src/universe/external/eagleye \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/glog,target=/autoware/src/universe/external/glog \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/llh_converter,target=/autoware/src/universe/external/llh_converter \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/morai_msgs,target=/autoware/src/universe/external/morai_msgs \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/muSSP,target=/autoware/src/universe/external/muSSP \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/pointcloud_to_laserscan,target=/autoware/src/universe/external/pointcloud_to_laserscan \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/rtklib_ros_bridge,target=/autoware/src/universe/external/rtklib_ros_bridge \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/tier4_ad_api_adaptor,target=/autoware/src/universe/external/tier4_ad_api_adaptor \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/tier4_autoware_msgs,target=/autoware/src/universe/external/tier4_autoware_msgs \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && source /opt/autoware/setup.bash \
   && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
@@ -280,6 +290,7 @@ COPY --from=universe-sensing-perception-devel /opt/autoware /opt/autoware
 
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=${CCACHE_DIR} \
+  --mount=type=bind,from=rosdep-depend,source=/autoware/src/universe/external/trt_batched_nms,target=/autoware/src/universe/external/trt_batched_nms \
   --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/perception,target=/autoware/src/universe/autoware.universe/perception \
   --mount=type=bind,from=rosdep-universe-sensing-perception-depend,source=/autoware/src/universe/autoware.universe/sensing,target=/autoware/src/universe/autoware.universe/sensing \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
