@@ -46,6 +46,7 @@ RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} --dependency-ty
   && cat /rosdep-core-exec-depend-packages.txt
 
 COPY src/universe/external /autoware/src/universe/external
+# trt_batched_nms depends on autoware_tensorrt_common and autoware_cuda_utils, which are not available in universe-common-devel stage
 RUN rm -rf /autoware/src/universe/external/trt_batched_nms
 COPY src/universe/autoware.universe/common /autoware/src/universe/autoware.universe/common
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
