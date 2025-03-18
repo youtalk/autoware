@@ -78,7 +78,6 @@ jobs:
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build 'autoware-tools'
-        needs: [load-env, docker-build-and-push]
         uses: ./.github/actions/docker-build-and-push-tools
         with:
           platform: amd64
