@@ -17,66 +17,66 @@ jobs:
     needs: load-env
     runs-on: buildjet-16vcpu-ubuntu-2204
     steps:
-      - name: Check if PR author is the specific user
-        id: author-check
-        run: |
-          PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
-          if [[ "$PR_AUTHOR" == "youtalk" ]]; then
-            echo "$PR_AUTHOR is a target user"
-            echo "author-found=true" >> $GITHUB_OUTPUT
-          else
-            echo "$PR_AUTHOR is not a target user"
-            echo "author-found=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
+      # - name: Check if PR author is the specific user
+      #   id: author-check
+      #   run: |
+      #     PR_AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+      #     if [[ "$PR_AUTHOR" == "youtalk" ]]; then
+      #       echo "$PR_AUTHOR is a target user"
+      #       echo "author-found=true" >> $GITHUB_OUTPUT
+      #     else
+      #       echo "$PR_AUTHOR is not a target user"
+      #       echo "author-found=false" >> $GITHUB_OUTPUT
+      #     fi
+      #   shell: bash
 
-      - name: Check out repository
-        uses: actions/checkout@v4
+      # - name: Check out repository
+      #   uses: actions/checkout@v4
 
-      - name: Set git config
-        uses: autowarefoundation/autoware-github-actions/set-git-config@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Set git config
+      #   uses: autowarefoundation/autoware-github-actions/set-git-config@v1
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get changed files
-        id: changed-files
-        uses: step-security/changed-files@v45
-        with:
-          files: |
-            *.env
-            *.repos
-            .github/actions/docker-build-and-push*/action.yaml
-            .github/workflows/docker-build-and-push*.yaml
-            ansible-galaxy-requirements.yaml
-            ansible/**
-            docker/**
+      # - name: Get changed files
+      #   id: changed-files
+      #   uses: step-security/changed-files@v45
+      #   with:
+      #     files: |
+      #       *.env
+      #       *.repos
+      #       .github/actions/docker-build-and-push*/action.yaml
+      #       .github/workflows/docker-build-and-push*.yaml
+      #       ansible-galaxy-requirements.yaml
+      #       ansible/**
+      #       docker/**
 
-      - name: Free disk space
-        if: ${{ steps.changed-files.outputs.any_changed == 'true' ||
-          github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'push' && github.ref_type == 'tag') }}
-        uses: ./.github/actions/free-disk-space
+      # - name: Free disk space
+      #   if: ${{ steps.changed-files.outputs.any_changed == 'true' ||
+      #     github.event_name == 'workflow_dispatch' ||
+      #     (github.event_name == 'push' && github.ref_type == 'tag') }}
+      #   uses: ./.github/actions/free-disk-space
 
-      - name: Build 'Autoware' without CUDA
-        if: ${{ steps.author-check.outputs.author-found == 'true' ||
-          steps.changed-files.outputs.any_changed == 'true' ||
-          github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'push' && github.ref_type == 'tag') }}
-        uses: ./.github/actions/docker-build-and-push
-        with:
-          platform: amd64
-          target-image: autoware
-          build-args: |
-            *.platform=linux/amd64
-            *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
-            *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
-            *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
-            *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
-            *.args.LIB_DIR=x86_64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.head_ref }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.head_ref }},mode=max
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      # - name: Build 'Autoware' without CUDA
+      #   if: ${{ steps.author-check.outputs.author-found == 'true' ||
+      #     steps.changed-files.outputs.any_changed == 'true' ||
+      #     github.event_name == 'workflow_dispatch' ||
+      #     (github.event_name == 'push' && github.ref_type == 'tag') }}
+      #   uses: ./.github/actions/docker-build-and-push
+      #   with:
+      #     platform: amd64
+      #     target-image: autoware
+      #     build-args: |
+      #       *.platform=linux/amd64
+      #       *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
+      #       *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
+      #       *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
+      #       *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
+      #       *.args.LIB_DIR=x86_64
+      #       *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.head_ref }}
+      #       *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-main
+      #       *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.head_ref }},mode=max
+      #     dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Show disk space
         if: always()
