@@ -43,7 +43,7 @@ runs:
       id: meta-visualizer
       uses: docker/metadata-action@v5
       with:
-        images: ${inputs.registry}/${{ github.repository_owner }}/${{ inputs.target-image }}
+        images: ${{ github.repository_owner }}/${{ inputs.target-image }}
         tags: |
           type=raw,value=visualizer-${{ inputs.platform }}
           type=raw,value=visualizer-${{ steps.date.outputs.date }}-${{ inputs.platform }}
