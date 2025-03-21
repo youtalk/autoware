@@ -107,6 +107,7 @@ runs:
       if: always()
       run: |
         df -h
+      shell: bash
 
     - name: Run docker build autoware:universe
       uses: docker/build-push-action@v6
@@ -123,6 +124,7 @@ runs:
       if: always()
       run: |
         df -h
+      shell: bash
 
     - name: Clean up docker
       if: always()
@@ -134,6 +136,7 @@ runs:
       if: always()
       run: |
         df -h
+      shell: bash
 
     - name: Run docker build autoware:universe-cuda
       uses: docker/build-push-action@v6
