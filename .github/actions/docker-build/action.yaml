@@ -124,6 +124,17 @@ runs:
       run: |
         df -h
 
+    - name: Clean up docker
+      if: always()
+      run: |
+        docker system prune -f
+      shell: bash
+
+    - name: Show disk space
+      if: always()
+      run: |
+        df -h
+
     - name: Run docker build autoware:universe-cuda
       uses: docker/build-push-action@v6
       with:
