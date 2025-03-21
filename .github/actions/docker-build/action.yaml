@@ -130,8 +130,8 @@ runs:
       if: always()
       run: |
         docker image list
-        docker system prune -f
-        docker buildx prune -a
+        docker system prune -af
+        docker buildx prune -af
         docker image list
       shell: bash
 
