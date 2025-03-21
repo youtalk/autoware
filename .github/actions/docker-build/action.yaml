@@ -103,11 +103,35 @@ runs:
           }
         skip-extraction: ${{ steps.cache-ccache.outputs.cache-hit && steps.cache-apt-get.outputs.cache-hit }}
 
-    - name: Run docker build
+    - name: Show disk space
+      if: always()
+      run: |
+        df -h
+
+    - name: Run docker build autoware:universe
       uses: docker/build-push-action@v6
       with:
         file: docker/Dockerfile
         context: .
         push: false
+        target: universe
         build-args: ${{ inputs.build-args }}
         cache-from: type=registry,ref=${{ github.repository }}-buildcache:${{ inputs.platform }}-${{ inputs.cache-tag-suffix }}
+        outputs: type=docker,dest=/tmp/universe.tar
+
+    - name: Show disk space
+      if: always()
+      run: |
+        df -h
+
+    - name: Run docker build autoware:universe-cuda
+      uses: docker/build-push-action@v6
+      with:
+        file: docker/Dockerfile
+        context: .
+        push: false
+        target: universe-cuda
+        build-args: ${{ inputs.build-args }}
+        cache-from: |
+          type=registry,ref=${{ github.repository }}-buildcache:${{ inputs.platform }}-cuda-${{ inputs.cache-tag-suffix }}
+          type=local,src=/tmp/universe.tar
