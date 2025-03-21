@@ -129,7 +129,10 @@ runs:
     - name: Clean up docker
       if: always()
       run: |
+        docker image list
         docker system prune -f
+        docker buildx prune -a
+        docker image list
       shell: bash
 
     - name: Show disk space
