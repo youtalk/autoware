@@ -1,5 +1,5 @@
 ### Builder
-FROM ghcr.io/autowarefoundation/autoware:universe-devel AS builder
+FROM ghcr.io/autowarefoundation/autoware:universe-common-devel AS builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 ARG LIB_DIR
@@ -17,11 +17,11 @@ RUN --mount=type=ssh \
     && source /opt/ros/"$ROS_DISTRO"/setup.bash && source /opt/autoware/setup.bash \
     && rosdep update && rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO \
     && colcon build --cmake-args \
-      "-Wno-dev" \
-      "--no-warn-unused-cli" \
-      --install-base /opt/autoware \
-      --merge-install \
-      --mixin release compile-commands ccache \
+    "-Wno-dev" \
+    "--no-warn-unused-cli" \
+    --install-base /opt/autoware \
+    --merge-install \
+    --mixin release compile-commands ccache \
     && find /opt/autoware/lib -type f -name "*.py" -exec chmod +x {} \; \
     && find /opt/autoware/share -type f -name "*.py" -exec chmod +x {} \; \
     && apt-get clean \
