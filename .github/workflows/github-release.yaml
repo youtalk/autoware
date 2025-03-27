@@ -25,7 +25,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             REF_NAME="${{ github.event.inputs.tag-name }}"
           else
-            REF_NAME="${{ github.ref_name }}"
+            REF_NAME="${{ github.head_ref }}"
           fi
 
           echo "tag-name=$REF_NAME" >> $GITHUB_OUTPUT
