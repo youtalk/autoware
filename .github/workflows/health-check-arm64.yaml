@@ -1,23 +1,36 @@
 name: health-check-arm64
 
 on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
   schedule:
     - cron: 0 12 * * *
   workflow_dispatch:
 
 jobs:
+  label-check:
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/make-sure-label-is-present.yaml@v1
+    with:
+      label: tag:run-health-check
+
   load-env:
+    needs: label-check
+    if: ${{ needs.label-check.outputs.result == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' }}
     uses: ./.github/workflows/load-env.yaml
 
   docker-build:
     needs: load-env
-    runs-on: buildjet-16vcpu-ubuntu-2204-arm
+    strategy:
+      matrix:
+        ubuntu-version: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu-version }}-arm
     steps:
-      # https://github.com/actions/checkout/issues/211
-      - name: Change permission of workspace
-        run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -25,6 +38,9 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/set-git-config@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
 
       - name: Build 'Autoware'
         uses: ./.github/actions/docker-build
