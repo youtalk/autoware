@@ -26,7 +26,10 @@ jobs:
 
   docker-build:
     needs: load-env
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        ubuntu-version: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu-version }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

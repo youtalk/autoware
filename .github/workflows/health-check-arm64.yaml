@@ -11,7 +11,10 @@ jobs:
 
   docker-build:
     needs: load-env
-    runs-on: buildjet-16vcpu-ubuntu-2204-arm
+    strategy:
+      matrix:
+        ubuntu-version: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu-version }}-arm
     steps:
       # https://github.com/actions/checkout/issues/211
       - name: Change permission of workspace
