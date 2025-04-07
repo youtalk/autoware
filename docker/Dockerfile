@@ -49,7 +49,6 @@ COPY src/universe/external /autoware/src/universe/external
 # trt_batched_nms depends on autoware_tensorrt_common and autoware_cuda_utils, which are not available in universe-common-devel stage
 RUN rm -rf /autoware/src/universe/external/trt_batched_nms
 COPY src/universe/autoware_universe/common /autoware/src/universe/autoware_universe/common
-COPY src/middleware/external /autoware/src/middleware/external
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
   > /rosdep-universe-common-depend-packages.txt \
   && cat /rosdep-universe-common-depend-packages.txt
@@ -74,6 +73,7 @@ COPY src/universe/autoware_universe/launch/tier4_perception_launch /autoware/src
 COPY src/universe/autoware_universe/launch/tier4_sensing_launch /autoware/src/universe/autoware_universe/launch/tier4_sensing_launch
 COPY src/universe/autoware_universe/perception /autoware/src/universe/autoware_universe/perception
 COPY src/universe/autoware_universe/sensing /autoware/src/universe/autoware_universe/sensing
+COPY src/universe/autoware_universe/evaluator/autoware_perception_online_evaluator /autoware/src/universe/autoware_universe/evaluator/autoware_perception_online_evaluator
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
   > /rosdep-universe-sensing-perception-depend-packages.txt \
   && cat /rosdep-universe-sensing-perception-depend-packages.txt
@@ -146,9 +146,7 @@ ARG ROS_DISTRO
 COPY src/launcher /autoware/src/launcher
 COPY src/param /autoware/src/param
 COPY src/sensor_component /autoware/src/sensor_component
-COPY src/sensor_kit /autoware/src/sensor_kit
 COPY src/universe /autoware/src/universe
-COPY src/vehicle /autoware/src/vehicle
 RUN /autoware/resolve_rosdep_keys.sh /autoware/src ${ROS_DISTRO} \
   > /rosdep-universe-depend-packages.txt \
   && cat /rosdep-universe-depend-packages.txt
@@ -242,7 +240,6 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/universe/external/rtklib_ros_bridge,target=/autoware/src/universe/external/rtklib_ros_bridge \
   --mount=type=bind,source=src/universe/external/tier4_ad_api_adaptor,target=/autoware/src/universe/external/tier4_ad_api_adaptor \
   --mount=type=bind,source=src/universe/external/tier4_autoware_msgs,target=/autoware/src/universe/external/tier4_autoware_msgs \
-  --mount=type=bind,source=src/middleware/external,target=/autoware/src/middleware/external \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && source /opt/autoware/setup.bash \
   && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
@@ -284,6 +281,7 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/universe/external/trt_batched_nms,target=/autoware/src/universe/external/trt_batched_nms \
   --mount=type=bind,source=src/universe/autoware_universe/perception,target=/autoware/src/universe/autoware_universe/perception \
   --mount=type=bind,source=src/universe/autoware_universe/sensing,target=/autoware/src/universe/autoware_universe/sensing \
+  --mount=type=bind,source=src/universe/autoware_universe/evaluator/autoware_perception_online_evaluator,target=/autoware/src/universe/autoware_universe/evaluator/autoware_perception_online_evaluator \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && source /opt/autoware/setup.bash \
   && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
@@ -457,12 +455,10 @@ RUN --mount=type=cache,target=${CCACHE_DIR} \
   --mount=type=bind,source=src/launcher,target=/autoware/src/launcher \
   --mount=type=bind,source=src/param,target=/autoware/src/param \
   --mount=type=bind,source=src/sensor_component,target=/autoware/src/sensor_component \
-  --mount=type=bind,source=src/sensor_kit,target=/autoware/src/sensor_kit \
   --mount=type=bind,source=src/universe/autoware_universe/evaluator,target=/autoware/src/universe/autoware_universe/evaluator \
   --mount=type=bind,source=src/universe/autoware_universe/launch,target=/autoware/src/universe/autoware_universe/launch \
   --mount=type=bind,source=src/universe/autoware_universe/simulator,target=/autoware/src/universe/autoware_universe/simulator \
   --mount=type=bind,source=src/universe/autoware_universe/tools,target=/autoware/src/universe/autoware_universe/tools \
-  --mount=type=bind,source=src/vehicle,target=/autoware/src/vehicle \
   source /opt/ros/"$ROS_DISTRO"/setup.bash \
   && source /opt/autoware/setup.bash \
   && /autoware/build_and_clean.sh ${CCACHE_DIR} /opt/autoware
