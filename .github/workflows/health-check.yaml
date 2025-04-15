@@ -15,7 +15,7 @@ jobs:
   label-check:
     uses: autowarefoundation/autoware-github-actions/.github/workflows/make-sure-label-is-present.yaml@v1
     with:
-      label: tag:run-health-check
+      label: run:health-check
 
   load-env:
     needs: label-check
@@ -27,6 +27,10 @@ jobs:
   docker-build:
     needs: load-env
     runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [main, nightly]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,11 +40,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
+
       - name: Build 'Autoware'
         uses: ./.github/actions/docker-build
         with:
           platform: amd64
-          cache-tag-suffix: main
+          cache-tag-suffix: ${{ matrix.build-type }}
+          additional-repos: ${{ matrix.build-type == 'nightly' && 'autoware-nightly.repos' || '' }}
           build-args: |
             ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             BASE_IMAGE=${{ needs.load-env.outputs.base_image }}

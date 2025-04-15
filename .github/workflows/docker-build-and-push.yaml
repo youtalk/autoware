@@ -14,7 +14,19 @@ jobs:
 
   docker-build-and-push:
     needs: load-env
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: buildjet-16vcpu-ubuntu-2204
+            arch-platform: linux/amd64
+            lib-dir: x86_64
+          - platform: arm64
+            runner: buildjet-16vcpu-ubuntu-2204-arm
+            arch-platform: linux/arm64
+            lib-dir: aarch64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Check if PR author is the specific user
         id: author-check
@@ -28,6 +40,11 @@ jobs:
             echo "author-found=false" >> $GITHUB_OUTPUT
           fi
         shell: bash
+
+      # https://github.com/actions/checkout/issues/211
+      - name: Change permission of workspace
+        run: |
+          sudo chown -R $USER:$USER ${{ github.workspace }}
 
       - name: Check out repository
         uses: actions/checkout@v4
@@ -56,6 +73,12 @@ jobs:
           (github.event_name == 'push' && github.ref_type == 'tag') }}
         uses: ./.github/actions/free-disk-space
 
+      - name: Set Swap Space
+        if: ${{ matrix.platform == 'arm64' }}
+        uses: pierotofy/set-swap-space@0404882bc4666c0ff2f6fd8b3d32af69a730183c
+        with:
+          swap-size-gb: 16
+
       - name: Build 'Autoware' without CUDA
         if: ${{ steps.author-check.outputs.author-found == 'true' ||
           steps.changed-files.outputs.any_changed == 'true' ||
@@ -63,18 +86,18 @@ jobs:
           (github.event_name == 'push' && github.ref_type == 'tag') }}
         uses: ./.github/actions/docker-build-and-push
         with:
-          platform: amd64
+          platform: ${{ matrix.platform }}
           target-image: autoware
           build-args: |
-            *.platform=linux/amd64
+            *.platform=${{ matrix.arch-platform }}
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
             *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
             *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
-            *.args.LIB_DIR=x86_64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }},mode=max
+            *.args.LIB_DIR=${{ matrix.lib-dir }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-main
+            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }},mode=max
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Show disk space
@@ -84,7 +107,19 @@ jobs:
 
   docker-build-and-push-tools:
     needs: [load-env, docker-build-and-push]
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: buildjet-16vcpu-ubuntu-2204
+            arch-platform: linux/amd64
+            lib-dir: x86_64
+          - platform: arm64
+            runner: buildjet-16vcpu-ubuntu-2204-arm
+            arch-platform: linux/arm64
+            lib-dir: aarch64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -116,16 +151,17 @@ jobs:
       - name: Build 'autoware-tools'
         uses: ./.github/actions/docker-build-and-push-tools
         with:
-          platform: amd64
+          platform: ${{ matrix.platform }}
           target-image: autoware-tools
           build-args: |
-            *.platform=linux/amd64
+            *.platform=${{ matrix.arch-platform }}
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
-            *.args.LIB_DIR=x86_64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }},mode=max
+            *.args.LIB_DIR=${{ matrix.lib-dir }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-main
+            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }},mode=max
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Show disk space
         if: always()
         run: |
@@ -133,7 +169,19 @@ jobs:
 
   docker-build-and-push-cuda:
     needs: [load-env, docker-build-and-push]
-    runs-on: buildjet-16vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: buildjet-16vcpu-ubuntu-2204
+            arch-platform: linux/amd64
+            lib-dir: x86_64
+          - platform: arm64
+            runner: buildjet-16vcpu-ubuntu-2204-arm
+            arch-platform: linux/arm64
+            lib-dir: aarch64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -168,21 +216,45 @@ jobs:
           (github.event_name == 'push' && github.ref_type == 'tag') }}
         uses: ./.github/actions/docker-build-and-push-cuda
         with:
-          platform: amd64
+          platform: ${{ matrix.platform }}
           target-image: autoware
           build-args: |
-            *.platform=linux/amd64
+            *.platform=${{ matrix.arch-platform }}
             *.args.ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             *.args.BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
             *.args.AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
             *.args.AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
-            *.args.LIB_DIR=x86_64
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }}
-            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:amd64-main
-            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:amd64-${{ github.ref_name }},mode=max
+            *.args.LIB_DIR=${{ matrix.lib-dir }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }}
+            *.cache-from=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-main
+            *.cache-to=type=registry,ref=${{ github.repository }}-buildcache:${{ matrix.platform }}-${{ github.ref_name }},mode=max
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Show disk space
         if: always()
         run: |
           df -h
+
+  update-docker-manifest:
+    needs: [docker-build-and-push, docker-build-and-push-cuda]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Combine multi arch images for 'autoware'
+        uses: ./.github/actions/combine-multi-arch-images
+        with:
+          package-name: autoware
+
+  update-docker-manifest-tools:
+    needs: docker-build-and-push-tools
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Combine multi arch images for 'autoware-tools'
+        uses: ./.github/actions/combine-multi-arch-images
+        with:
+          package-name: autoware-tools
