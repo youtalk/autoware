@@ -30,21 +30,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: amd64
+          - build-type: [main, nightly, main-arm64]
+          - build-type: main
+            platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
             arch-platform: linux/amd64
             lib-dir: x86_64
-            build-type: main
-          - platform: amd64
+          - build-type: nightly
+            platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
             arch-platform: linux/amd64
             lib-dir: x86_64
-            build-type: nightly
-          - platform: arm64
+          - build-type: main-arm64
+            platform: arm64
             runner: buildjet-16vcpu-ubuntu-2204-arm
             arch-platform: linux/arm64
             lib-dir: aarch64
-            build-type: main
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out repository
