@@ -57,7 +57,7 @@ runs:
       with:
         push: true
         files: |
-          docker/docker-bake-base.hcl
+          docker/autoware_base/docker-bake.hcl
           ${{ steps.meta-base.outputs.bake-file }}
           ${{ steps.meta-base-cuda.outputs.bake-file }}
         provenance: false
