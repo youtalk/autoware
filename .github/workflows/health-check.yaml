@@ -29,19 +29,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build-type: [main, nightly, main-arm64]
+        build-type: [amd64-main, amd64-nightly, arm64-main]
         include:
-          - build-type: main
+          - build-type: amd64-main
             platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
             arch-platform: linux/amd64
             lib-dir: x86_64
-          - build-type: nightly
+          - build-type: amd64-nightly
             platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
             arch-platform: linux/amd64
             lib-dir: x86_64
-          - build-type: main-arm64
+          - build-type: arm64-main
             platform: arm64
             runner: buildjet-16vcpu-ubuntu-2204-arm
             arch-platform: linux/arm64
@@ -92,8 +92,8 @@ jobs:
         uses: ./.github/actions/docker-build
         with:
           platform: ${{ matrix.arch-platform }}
-          cache-tag-suffix: ${{ matrix.build-type }}
-          additional-repos: ${{ matrix.build-type == 'nightly' && 'autoware-nightly.repos' || '' }}
+          cache-key: ${{ matrix.build-type }}
+          additional-repos: ${{ matrix.build-type == 'amd64-nightly' && 'autoware-nightly.repos' || '' }}
           build-args: |
             ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
             BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
