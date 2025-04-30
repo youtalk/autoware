@@ -34,17 +34,14 @@ jobs:
           - build-type: main
             platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
-            arch-platform: linux/amd64
             lib-dir: x86_64
           - build-type: nightly
             platform: amd64
             runner: buildjet-16vcpu-ubuntu-2204
-            arch-platform: linux/amd64
             lib-dir: x86_64
           - build-type: main-arm64
             platform: arm64
             runner: buildjet-16vcpu-ubuntu-2204-arm
-            arch-platform: linux/arm64
             lib-dir: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
@@ -91,12 +88,11 @@ jobs:
           github.event_name == 'workflow_dispatch' }}
         uses: ./.github/actions/docker-build
         with:
-          platform: ${{ matrix.arch-platform }}
+          platform: ${{ matrix.platform }}
           cache-tag-suffix: ${{ matrix.build-type }}
           additional-repos: ${{ matrix.build-type == 'nightly' && 'autoware-nightly.repos' || '' }}
           build-args: |
             ROS_DISTRO=${{ needs.load-env.outputs.rosdistro }}
-            BASE_IMAGE=${{ needs.load-env.outputs.base_image }}
             AUTOWARE_BASE_IMAGE=${{ needs.load-env.outputs.autoware_base_image }}
             AUTOWARE_BASE_CUDA_IMAGE=${{ needs.load-env.outputs.autoware_base_cuda_image }}
             LIB_DIR=${{ matrix.lib-dir }}
