@@ -80,7 +80,7 @@ jobs:
           matrix.platform == 'arm64' }}
         uses: pierotofy/set-swap-space@0404882bc4666c0ff2f6fd8b3d32af69a730183c
         with:
-          swap-size-gb: 16
+          swap-size-gb: 8
 
       - name: Build 'Autoware'
         if: ${{ steps.changed-files.outputs.any_changed == 'true' ||
