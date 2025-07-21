@@ -187,3 +187,253 @@ sequenceDiagram
 ```
 
 このアーキテクチャにより、Autowareは複雑な自動運転タスクを安全かつ効率的に実行できます。
+
+---
+
+## 反射動作と熟考動作の実装詳細
+
+各コンポーネントは、**反射動作（Reflexive Actions）**と**熟考動作（Deliberative Actions）**を適切に組み合わせることで、安全性と効率性を両立しています。
+
+### 🚨 反射動作を実装するコンポーネント
+
+#### 1. Control - AEB（緊急ブレーキ）
+```mermaid
+flowchart TD
+    SENSOR_INPUT[🔍 センサー入力<br/>点群・物体データ] --> PATH_PRED[📈 予測経路生成<br/>IMU/MPC]
+    PATH_PRED --> OBSTACLE_DETECT[🎯 障害物検出<br/>1-5ms]
+    OBSTACLE_DETECT --> RSS_CALC[⚡ RSS距離計算<br/>< 1ms]
+    RSS_CALC --> COLLISION_CHECK{💥 衝突危険?}
+    COLLISION_CHECK -->|Yes| EMERGENCY_BRAKE[🚨 緊急ブレーキ<br/>即座実行]
+    COLLISION_CHECK -->|No| CONTINUE[✅ 監視継続]
+    
+    subgraph "RSS計算式"
+        RSS_FORMULA["d = v_ego×t_response + v_ego²/(2×a_min)<br/>- sign(v_obj)×v_obj²/(2×a_obj_min) + offset"]
+    end
+    
+    classDef reflex fill:#ffcccc,stroke:#ff0000,stroke-width:3px
+    class EMERGENCY_BRAKE reflex
+```
+
+**特徴**:
+- **応答時間**: 1-10ms
+- **判断基準**: 物理法則に基づく確定的計算
+- **実行**: ハードウェア割り込みレベル
+
+#### 2. System - MRM（最小リスク操作）
+```mermaid
+flowchart TD
+    SYSTEM_FAILURE[⚠️ システム故障検知] --> FAILURE_ASSESS[📊 故障評価<br/>10ms]
+    FAILURE_ASSESS --> MRM_SELECT{🎯 MRM選択}
+    
+    MRM_SELECT -->|軽微| COMFORTABLE[😌 快適停止<br/>Comfortable Stop]
+    MRM_SELECT -->|重大| EMERGENCY_STOP[🛑 緊急停止<br/>Emergency Stop]
+    MRM_SELECT -->|可能| PULLOVER[🚗 路肩退避<br/>Pull Over]
+    
+    COMFORTABLE --> GRADUAL[📉 段階的減速<br/>3-5秒]
+    EMERGENCY_STOP --> IMMEDIATE[⚡ 即座停止<br/>< 1秒]
+    PULLOVER --> SAFE_MOVE[🏁 安全地点移動<br/>5-10秒]
+    
+    GRADUAL --> COMPLETE[✅ MRM完了]
+    IMMEDIATE --> COMPLETE
+    SAFE_MOVE --> COMPLETE
+    
+    classDef reflex fill:#ffcccc,stroke:#ff0000,stroke-width:3px
+    class EMERGENCY_STOP,IMMEDIATE reflex
+```
+
+**特徴**:
+- **応答時間**: 10-100ms
+- **判断基準**: 故障の種類と重要度
+- **実行**: 事前定義されたシナリオベース
+
+#### 3. Control - Vehicle Command Gate
+```mermaid
+flowchart TD
+    CONTROL_CMD[🎮 制御コマンド] --> GATE_INPUT[🚪 ゲート入力]
+    GATE_INPUT --> SAFETY_CHECK{🛡️ 安全チェック<br/>< 1ms}
+    
+    SAFETY_CHECK -->|正常| NORMAL_OUTPUT[✅ 通常出力]
+    SAFETY_CHECK -->|異常| LIMIT_APPLY[⚡ 制限適用]
+    
+    subgraph "制限チェック項目"
+        VEL_CHECK[🏃 速度制限]
+        ACC_CHECK[📈 加速度制限]
+        JERK_CHECK[📊 ジャーク制限]
+        LAT_CHECK[🔄 横加速度制限]
+    end
+    
+    SAFETY_CHECK --> VEL_CHECK
+    SAFETY_CHECK --> ACC_CHECK
+    SAFETY_CHECK --> JERK_CHECK
+    SAFETY_CHECK --> LAT_CHECK
+    
+    LIMIT_APPLY --> VEHICLE_OUT[🚙 車両へ出力]
+    NORMAL_OUTPUT --> VEHICLE_OUT
+    
+    classDef reflex fill:#ffcccc,stroke:#ff0000,stroke-width:3px
+    class SAFETY_CHECK,LIMIT_APPLY reflex
+```
+
+**特徴**:
+- **応答時間**: < 1ms
+- **判断基準**: 事前設定された制限値
+- **実行**: リアルタイムフィルタリング
+
+### 🧠 熟考動作を実装するコンポーネント
+
+#### 1. Planning - 階層的計画システム
+```mermaid
+flowchart TD
+    GOAL[🎯 目標設定] --> MISSION_PLAN[🗺️ ミッション計画<br/>1-10秒]
+    
+    subgraph "熟考層1: 大局計画"
+        MISSION_PLAN --> ROUTE_SEARCH[🔍 経路探索<br/>A*アルゴリズム]
+        ROUTE_SEARCH --> WAYPOINT_GEN[📍 ウェイポイント生成]
+    end
+    
+    subgraph "熟考層2: 行動計画"
+        WAYPOINT_GEN --> BEHAVIOR_EVAL[🤔 行動評価<br/>100-1000ms]
+        BEHAVIOR_EVAL --> MULTI_OPT[📊 複数選択肢検討]
+        MULTI_OPT --> COST_CALC[💰 コスト計算]
+        
+        LANE_FOLLOW[🛣️ 車線追従]
+        LANE_CHANGE[↔️ 車線変更]
+        AVOID[🚫 障害物回避]
+        INTERSECT[🚦 交差点通過]
+        
+        MULTI_OPT --> LANE_FOLLOW
+        MULTI_OPT --> LANE_CHANGE
+        MULTI_OPT --> AVOID
+        MULTI_OPT --> INTERSECT
+    end
+    
+    subgraph "熟考層3: 運動計画"
+        COST_CALC --> MOTION_PLAN[📈 運動計画<br/>10-100ms]
+        MOTION_PLAN --> TRAJ_GEN[🌊 軌道生成<br/>Frenet座標系]
+        TRAJ_GEN --> VEL_PROFILE[⚡ 速度プロファイル]
+        VEL_PROFILE --> OPTIMIZE[✨ 最適化]
+    end
+    
+    OPTIMIZE --> FINAL_TRAJ[🏁 最終軌道]
+    
+    classDef delib fill:#ccffcc,stroke:#00aa00,stroke-width:2px
+    class MISSION_PLAN,BEHAVIOR_EVAL,MOTION_PLAN,OPTIMIZE delib
+```
+
+**特徴**:
+- **応答時間**: 100ms - 10秒
+- **判断基準**: 多目的最適化
+- **実行**: 複雑な数値計算とアルゴリズム
+
+#### 2. Perception - 認識処理
+```mermaid
+flowchart TD
+    SENSOR_DATA[📡 センサーデータ] --> PREPROCESSING[🔧 前処理<br/>50-100ms]
+    PREPROCESSING --> DETECTION[🎯 物体検出<br/>100-200ms]
+    DETECTION --> TRACKING[📍 追跡処理<br/>50ms]
+    TRACKING --> PREDICTION[🔮 動作予測<br/>100-500ms]
+    
+    subgraph "深層学習による認識"
+        DETECTION --> CNN_PROC[🧠 CNN処理<br/>CenterPoint/YOLOX]
+        CNN_PROC --> FEATURE_EXT[🔍 特徴抽出]
+        FEATURE_EXT --> CLASSIFICATION[📋 分類・検出]
+    end
+    
+    subgraph "時系列解析"
+        TRACKING --> KALMAN[📊 カルマンフィルタ]
+        KALMAN --> HUNGARIAN[🎯 ハンガリアン法]
+        HUNGARIAN --> ID_ASSIGN[🏷️ ID割り当て]
+    end
+    
+    subgraph "予測モデル"
+        PREDICTION --> CV_MODEL[📈 等速モデル]
+        PREDICTION --> MAP_BASED[🗺️ 地図ベース予測]
+        PREDICTION --> LEARNED[🤖 学習ベース予測]
+    end
+    
+    PREDICTION --> PERCEPTION_OUT[👁️ 認識結果出力]
+    
+    classDef delib fill:#ccffcc,stroke:#00aa00,stroke-width:2px
+    class DETECTION,TRACKING,PREDICTION delib
+```
+
+**特徴**:
+- **応答時間**: 50-500ms
+- **判断基準**: 統計的推論と学習モデル
+- **実行**: GPU加速計算
+
+### ⚖️ 統合意思決定システム
+
+```mermaid
+graph TB
+    subgraph "入力層"
+        SENS_IN[📡 センサー入力]
+        MAP_IN[🗺️ 地図データ]
+        STATE_IN[📊 車両状態]
+    end
+    
+    subgraph "認識・位置推定層"
+        PERCEPTION[👁️ 認識処理<br/>熟考: 100-500ms]
+        LOCALIZATION[📍 位置推定<br/>熟考: 50-100ms]
+    end
+    
+    subgraph "危険度評価層"
+        EMERGENCY_DETECT[🚨 緊急事態検知<br/>反射: 1-10ms]
+        SITUATION_ASSESS[🤔 状況評価<br/>熟考: 100ms]
+    end
+    
+    subgraph "実行層"
+        REFLEX_ACTION[⚡ 反射動作<br/>AEB/MRM/Filter]
+        DELIB_ACTION[🧠 熟考動作<br/>Planning/Control]
+    end
+    
+    subgraph "制御統合層"
+        CMD_GATE[🛡️ Command Gate<br/>優先度制御: < 1ms]
+    end
+    
+    subgraph "出力層"
+        VEHICLE_CTRL[🚙 車両制御]
+    end
+    
+    SENS_IN --> PERCEPTION
+    MAP_IN --> LOCALIZATION
+    STATE_IN --> EMERGENCY_DETECT
+    
+    PERCEPTION --> EMERGENCY_DETECT
+    PERCEPTION --> SITUATION_ASSESS
+    LOCALIZATION --> SITUATION_ASSESS
+    
+    EMERGENCY_DETECT -->|緊急時| REFLEX_ACTION
+    SITUATION_ASSESS -->|通常時| DELIB_ACTION
+    
+    REFLEX_ACTION -->|最高優先度| CMD_GATE
+    DELIB_ACTION -->|通常優先度| CMD_GATE
+    
+    CMD_GATE --> VEHICLE_CTRL
+    
+    classDef reflex fill:#ffcccc,stroke:#ff0000,stroke-width:3px
+    classDef delib fill:#ccffcc,stroke:#00aa00,stroke-width:2px
+    classDef gate fill:#ccccff,stroke:#0000ff,stroke-width:2px
+    
+    class EMERGENCY_DETECT,REFLEX_ACTION reflex
+    class PERCEPTION,LOCALIZATION,SITUATION_ASSESS,DELIB_ACTION delib
+    class CMD_GATE gate
+```
+
+### 📊 性能特性比較
+
+| 動作タイプ | 応答時間 | 計算複雑度 | 精度 | 適応性 | 主要用途 |
+|:----------|:---------|:----------|:-----|:-------|:---------|
+| **反射動作** | 1-100ms | 低 | 中 | 低 | 安全確保 |
+| **熟考動作** | 100ms-10s | 高 | 高 | 高 | 最適化 |
+
+### 🔄 協調動作例
+
+#### シナリオ: 急な車線変更が必要な状況
+
+1. **熟考動作**: 車線変更計画を最適化（500ms）
+2. **反射動作**: 急接近車両をAEBで検知（5ms）
+3. **統合制御**: Command Gateで優先度判定（< 1ms）
+4. **最終動作**: 緊急ブレーキ実行（反射動作が優先）
+
+この**多層防御システム**により、Autowareは様々な交通状況に対して適切な時間スケールで最適な判断と行動を実現しています。
