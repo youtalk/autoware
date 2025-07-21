@@ -1,63 +1,63 @@
-# Pointcloud Decoupling Improvement Plan for Autoware
+# Autoware向け点群データ疎結合化改善計画
 
-## Current Architecture Issues
+## 現在のアーキテクチャの課題
 
-### 1. Dense Communication Problem
+### 1. 高密度通信の問題
 
-Currently, raw pointcloud data flows to multiple components:
-- **Perception**: Processes raw pointcloud for object detection, segmentation
-- **Localization**: NDT scan matcher uses raw pointcloud for pose estimation  
-- **Planning**: Some modules (obstacle_stop_planner, obstacle_cruise_planner) directly consume pointcloud
+現在、生の点群データが複数のコンポーネントに流れています：
+- **Perception（認識）**: 物体検出、セグメンテーションのために生の点群を処理
+- **Localization（自己位置推定）**: NDTスキャンマッチャーが位置推定のために生の点群を使用
+- **Planning（経路計画）**: 一部のモジュール（obstacle_stop_planner、obstacle_cruise_planner）が点群を直接消費
 
-This creates:
-- High bandwidth requirements (pointcloud at 10Hz = ~2MB/frame × 10Hz × 3 consumers = 60MB/s)
-- Tight coupling between modules
-- Redundant processing of the same data
-- Difficulty in distributed deployment
+これにより以下の問題が発生：
+- 高帯域幅要求（点群10Hz = 〜2MB/フレーム × 10Hz × 3消費者 = 60MB/秒）
+- モジュール間の密結合
+- 同じデータの冗長な処理
+- 分散配置の困難性
 
-### 2. Current Data Flow
+### 2. 現在のデータフロー
 
 ```mermaid
 graph LR
-    LiDAR[LiDAR Sensor] --> PC[Raw Pointcloud]
+    LiDAR[LiDARセンサー] --> PC[生点群]
     PC --> P[Perception]
     PC --> L[Localization]
     PC --> PL[Planning]
     
-    P --> OBJ[Objects]
-    P --> SEG[Segmented PC]
-    L --> POSE[Pose]
+    P --> OBJ[物体]
+    P --> SEG[セグメント済み点群]
+    L --> POSE[姿勢]
     
     OBJ --> PL
     SEG --> PL
     POSE --> PL
 ```
 
-## Proposed Improved Architecture
+## 提案する改善アーキテクチャ
 
-### 1. Abstraction Layer Design
+### 1. 抽象化レイヤー設計
 
-Introduce abstraction layers to decouple raw sensor data from high-level modules:
+生のセンサーデータと高レベルモジュールを疎結合化する抽象化レイヤーを導入：
 
 ```mermaid
 graph TB
-    subgraph "Sensor Layer"
-        LiDAR[LiDAR Sensors]
+    subgraph "センサー層"
+        LiDAR[LiDARセンサー]
     end
     
-    subgraph "Processing Layer"
-        PP[Pointcloud Processor]
-        PC[Pointcloud Cache]
+    subgraph "処理層"
+        PP[点群プロセッサ]
+        PC[点群キャッシュ]
     end
     
-    subgraph "Abstraction Services"
-        LS[Localization Service]
-        OS[Obstacle Service]
-        FS[Freespace Service]
-        VS[Voxel Grid Service]
+    subgraph "抽象化サービス"
+        LS[自己位置推定サービス]
+        OS[障害物サービス]
+        FS[自由空間サービス]
+        VS[ボクセルグリッドサービス]
     end
     
-    subgraph "Consumer Modules"
+    subgraph "消費モジュール"
         PER[Perception]
         LOC[Localization]
         PLN[Planning]
@@ -78,15 +78,15 @@ graph TB
     VS --> LOC
 ```
 
-### 2. Proposed Abstraction Services
+### 2. 提案する抽象化サービス
 
-#### A. Localization Service
-Instead of raw pointcloud, provide:
-- **Feature Pointcloud**: Pre-processed points suitable for matching
-  - Edge/corner features extracted
-  - Downsampled to optimal resolution
-  - Transformed to vehicle frame
-- **Scan Matching API**: Request-based matching service
+#### A. 自己位置推定サービス
+生の点群の代わりに以下を提供：
+- **特徴点群**: マッチングに適した前処理済み点群
+  - エッジ/コーナー特徴の抽出
+  - 最適解像度へのダウンサンプリング
+  - 車両座標系への変換
+- **スキャンマッチングAPI**: リクエストベースのマッチングサービス
   ```cpp
   service LocalizationScan {
     request: initial_pose, search_range
@@ -94,13 +94,13 @@ Instead of raw pointcloud, provide:
   }
   ```
 
-#### B. Obstacle Service
-Replace direct pointcloud access with:
-- **Obstacle Grid Map**: 2D/3D occupancy representation
-  - Pre-computed from pointcloud
-  - Updated at sensor rate
-  - Efficient spatial queries
-- **Obstacle Query API**:
+#### B. 障害物サービス
+直接的な点群アクセスを以下に置き換え：
+- **障害物グリッドマップ**: 2D/3D占有表現
+  - 点群から事前計算
+  - センサーレートで更新
+  - 効率的な空間クエリ
+- **障害物クエリAPI**:
   ```cpp
   service ObstacleQuery {
     request: query_region (polygon/box)
@@ -108,11 +108,11 @@ Replace direct pointcloud access with:
   }
   ```
 
-#### C. Freespace Service
-Provide planning-specific abstractions:
-- **Drivable Area Map**: Binary representation of free/occupied space
-- **Distance Field**: Pre-computed distance to nearest obstacle
-- **Collision Check API**:
+#### C. 自由空間サービス
+プランニング特化の抽象化を提供：
+- **走行可能領域マップ**: 自由/占有空間のバイナリ表現
+- **距離フィールド**: 最近傍障害物までの事前計算距離
+- **衝突チェックAPI**:
   ```cpp
   service CollisionCheck {
     request: trajectory_points
@@ -120,129 +120,129 @@ Provide planning-specific abstractions:
   }
   ```
 
-#### D. Voxel Grid Service
-Centralized voxel grid management:
-- **Shared Voxel Grid**: Single voxelized representation
-- **Multi-resolution Support**: Different resolutions for different use cases
-- **Incremental Updates**: Only update changed voxels
+#### D. ボクセルグリッドサービス
+一元化されたボクセルグリッド管理：
+- **共有ボクセルグリッド**: 単一のボクセル化表現
+- **マルチ解像度サポート**: 用途別の異なる解像度
+- **増分更新**: 変更されたボクセルのみ更新
 
-### 3. Implementation Strategy
+### 3. 実装戦略
 
-#### Phase 1: Abstraction Layer Introduction
-1. Create abstraction service interfaces
-2. Implement service providers that consume raw pointcloud
-3. Maintain backward compatibility with existing interfaces
+#### フェーズ1: 抽象化レイヤーの導入
+1. 抽象化サービスインターフェースの作成
+2. 生の点群を消費するサービスプロバイダーの実装
+3. 既存インターフェースとの後方互換性の維持
 
-#### Phase 2: Module Migration
-1. **Planning Migration**:
-   - Replace pointcloud subscriptions with service calls
-   - Use obstacle grid/freespace maps instead of raw points
-   - Implement trajectory-based collision checking
+#### フェーズ2: モジュール移行
+1. **Planningの移行**:
+   - 点群サブスクリプションをサービス呼び出しに置換
+   - 生の点の代わりに障害物グリッド/自由空間マップを使用
+   - 軌道ベースの衝突チェックを実装
 
-2. **Localization Migration**:
-   - Use feature pointcloud service
-   - Implement scan matching as a service
-   - Cache and reuse processed features
+2. **Localizationの移行**:
+   - 特徴点群サービスを使用
+   - スキャンマッチングをサービスとして実装
+   - 処理済み特徴のキャッシュと再利用
 
-3. **Perception Enhancement**:
-   - Become the primary pointcloud processor
-   - Publish abstracted representations
-   - Provide query-based services
+3. **Perceptionの強化**:
+   - 主要な点群プロセッサーになる
+   - 抽象化された表現を公開
+   - クエリベースのサービスを提供
 
-#### Phase 3: Optimization
-1. Implement caching strategies
-2. Add compression for inter-process communication
-3. Support distributed deployment
+#### フェーズ3: 最適化
+1. キャッシング戦略の実装
+2. プロセス間通信の圧縮を追加
+3. 分散配置のサポート
 
-### 4. Benefits of Proposed Architecture
+### 4. 提案アーキテクチャの利点
 
-1. **Reduced Bandwidth**:
-   - Raw pointcloud processed once
-   - Abstractions are much smaller (KB vs MB)
-   - Query-based access reduces unnecessary data transfer
+1. **帯域幅の削減**:
+   - 生の点群は一度だけ処理
+   - 抽象化ははるかに小さい（KB対MB）
+   - クエリベースのアクセスで不要なデータ転送を削減
 
-2. **Loose Coupling**:
-   - Modules depend on abstractions, not raw data
-   - Easy to swap implementations
-   - Better testability
+2. **疎結合**:
+   - モジュールは生データではなく抽象化に依存
+   - 実装の入れ替えが容易
+   - テスタビリティの向上
 
-3. **Performance**:
-   - Centralized processing reduces redundancy
-   - Caching improves latency
-   - Enables GPU acceleration in one place
+3. **パフォーマンス**:
+   - 一元化された処理で冗長性を削減
+   - キャッシングでレイテンシを改善
+   - 一箇所でのGPUアクセラレーションが可能
 
-4. **Scalability**:
-   - Services can run on different machines
-   - Load balancing possible
-   - Cloud deployment friendly
+4. **スケーラビリティ**:
+   - サービスは異なるマシンで実行可能
+   - ロードバランシングが可能
+   - クラウド展開に適している
 
-### 5. Example API Definitions
+### 5. API定義の例
 
 ```cpp
-// Obstacle Service API
+// 障害物サービスAPI
 namespace autoware::abstraction {
 
 class ObstacleService {
 public:
-  // Get obstacles in a specific region
+  // 特定領域の障害物を取得
   ObstacleList queryObstacles(const geometry_msgs::Polygon& region);
   
-  // Get occupancy grid for planning
+  // プランニング用の占有グリッドを取得
   OccupancyGrid getOccupancyGrid(const GridParams& params);
   
-  // Check collision for trajectory
+  // 軌道の衝突チェック
   bool checkTrajectoryCollision(const Trajectory& trajectory);
   
-  // Subscribe to obstacle updates in region
+  // 領域内の障害物更新を購読
   void subscribeToRegion(const geometry_msgs::Polygon& region,
                         ObstacleCallback callback);
 };
 
-// Localization Service API  
+// 自己位置推定サービスAPI  
 class LocalizationService {
 public:
-  // Get processed scan for matching
+  // マッチング用の処理済みスキャンを取得
   ProcessedScan getProcessedScan(const ScanParams& params);
   
-  // Perform scan matching
+  // スキャンマッチングを実行
   MatchResult matchScan(const Pose& initial_pose,
                        const ProcessedScan& scan);
   
-  // Get feature points for localization
+  // 自己位置推定用の特徴点を取得
   FeatureCloud getFeatureCloud(const FeatureParams& params);
 };
 
 }
 ```
 
-### 6. Migration Path
+### 6. 移行パス
 
-1. **Week 1-2**: Design and implement abstraction interfaces
-2. **Week 3-4**: Create service implementations with caching
-3. **Week 5-8**: Migrate planning modules to use abstractions
-4. **Week 9-12**: Migrate localization to use services
-5. **Week 13-16**: Optimize and benchmark performance
+1. **第1-2週**: 抽象化インターフェースの設計と実装
+2. **第3-4週**: キャッシング付きサービス実装の作成
+3. **第5-8週**: プランニングモジュールを抽象化使用に移行
+4. **第9-12週**: 自己位置推定をサービス使用に移行
+5. **第13-16週**: パフォーマンスの最適化とベンチマーク
 
-### 7. Performance Targets
+### 7. パフォーマンス目標
 
-- **Latency**: < 10ms for service queries
-- **Bandwidth**: 80% reduction in inter-process communication
-- **CPU**: 30% reduction through eliminated redundancy
-- **Memory**: Shared memory for large data structures
+- **レイテンシ**: サービスクエリで10ms未満
+- **帯域幅**: プロセス間通信で80%削減
+- **CPU**: 冗長性排除により30%削減
+- **メモリ**: 大規模データ構造の共有メモリ化
 
-### 8. Compatibility Considerations
+### 8. 互換性の考慮事項
 
-- Maintain existing topics during transition
-- Provide adapter nodes for legacy compatibility
-- Gradual deprecation of direct pointcloud access
-- Configuration flags to enable/disable new architecture
+- 移行期間中は既存トピックを維持
+- レガシー互換性のためのアダプターノードを提供
+- 直接的な点群アクセスの段階的廃止
+- 新アーキテクチャを有効/無効にする設定フラグ
 
-## Conclusion
+## まとめ
 
-This decoupling strategy addresses the dense communication problem by:
-1. Processing pointcloud data once at the source
-2. Providing efficient abstractions for different use cases
-3. Enabling query-based access patterns
-4. Supporting distributed and scalable deployment
+この疎結合化戦略は、以下により高密度通信の問題に対処します：
+1. 点群データをソースで一度だけ処理
+2. 異なるユースケースに効率的な抽象化を提供
+3. クエリベースのアクセスパターンを実現
+4. 分散かつスケーラブルな展開をサポート
 
-The proposed architecture maintains Autoware's modularity while significantly improving efficiency and reducing coupling between components.
+提案されたアーキテクチャは、Autowareのモジュール性を維持しながら、効率性を大幅に向上させ、コンポーネント間の結合を削減します。
