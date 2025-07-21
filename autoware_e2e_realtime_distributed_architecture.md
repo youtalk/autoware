@@ -286,8 +286,8 @@ graph TB
         end
         
         subgraph "ASIL-B機能"
-            PERCEP_B[知覚処理<br/>ASIL-B(D)]
-            PLAN_B[経路計画<br/>ASIL-B(D)]
+            PERCEP_B["知覚処理<br/>ASIL-B(D)"]
+            PLAN_B["経路計画<br/>ASIL-B(D)"]
         end
         
         subgraph "QM機能"
