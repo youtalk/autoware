@@ -8,23 +8,44 @@
 
 ## アーキテクチャ
 
+**重要**: Dockerビルド時には`setup-dev-env.sh`が実行され、Ansibleによるパッケージインストールが行われる。そのため、**ネイティブ版と共通のAnsibleロック**も必要となる。
+
 ```mermaid
 flowchart TB
-    subgraph dev["開発ビルド"]
-        A1[docker build] --> B1[通常ビルド<br/>最新取得]
-        B1 --> C1[rosdep で<br/>動的解決]
-        C1 --> D1[ロックファイル<br/>生成可能]
-        D1 --> E1["apt.lock<br/>pip.lock<br/>rosdep.lock"]
+    subgraph dockerfile["Dockerfile ビルドフロー"]
+        D1["FROM base-image"] --> D2["setup-dev-env.sh<br/>(Ansible実行)"]
+        D2 --> D3["rosdep install"]
+        D3 --> D4["colcon build"]
     end
 
-    subgraph release["リリースビルド"]
-        A2["docker build<br/>--build-arg USE_LOCKFILE=true"] --> B2[--locked モード]
-        B2 --> C2[ロックファイル<br/>参照]
-        C2 --> D2[固定バージョン<br/>インストール]
+    subgraph locks["ロックファイル（2種類必要）"]
+        subgraph ansible_lock["共通: Ansibleロック"]
+            AL["ansible/vars/<br/>locked-versions-{distro}-{arch}.yaml"]
+        end
+        subgraph docker_lock["Docker専用: 追加ロック"]
+            DL1["rosdep-resolved.lock"]
+            DL2["ベースイメージダイジェスト"]
+            DL3["Dockerfile内Python"]
+        end
     end
 
-    E1 -.->|Git管理| C2
+    D2 -->|--locked| AL
+    D3 -->|--locked| DL1
+    D1 -->|ダイジェスト指定| DL2
+
+    style ansible_lock fill:#ffffcc
+    style docker_lock fill:#ccffcc
 ```
+
+### ネイティブ版との共通部分
+
+Dockerfile内で実行される`setup-dev-env.sh`はネイティブ版と同一。そのため、以下はネイティブ版と共通:
+
+- `ansible/vars/locked-versions-*.yaml` - Ansibleロックファイル
+- `.env`ファイルのバージョン定義（CUDA、TensorRT、ros_apt_source_version等）
+- Ansibleロールの`--locked`対応
+
+詳細は [dependency-pinning-native.md](./dependency-pinning-native.md) を参照。
 
 ---
 
@@ -241,18 +262,30 @@ main "$@"
 # ビルド引数追加
 ARG USE_LOCKFILE=false
 
-# ロックファイルコピー（--lockedモード時のみ使用）
+# Ansibleロックファイルコピー（ネイティブ版と共通）
+COPY ansible/vars /autoware/ansible/vars
+
+# Docker専用ロックファイルコピー
 COPY docker/lockfiles /autoware/lockfiles
 
-# 条件分岐によるインストール
+# setup-dev-env.sh の実行（--locked オプション追加）
 RUN if [ "$USE_LOCKFILE" = "true" ]; then \
-        /autoware/docker/scripts/install_from_lockfile.sh apt; \
+        ./setup-dev-env.sh -y --locked --module all --no-nvidia --no-cuda-drivers openadkit; \
+    else \
+        ./setup-dev-env.sh -y --module all --no-nvidia --no-cuda-drivers openadkit; \
+    fi
+
+# rosdep インストール（--locked モード対応）
+RUN if [ "$USE_LOCKFILE" = "true" ]; then \
+        /autoware/docker/scripts/install_from_lockfile.sh rosdep; \
     else \
         rosdep update && \
         /autoware/resolve_rosdep_keys.sh /autoware/src "${ROS_DISTRO}" | \
         xargs apt-get install -y; \
     fi
 ```
+
+**注意**: `setup-dev-env.sh --locked`により、Ansibleロックファイル（`ansible/vars/locked-versions-*.yaml`）が参照される。これはネイティブ版と同じ仕組み。
 
 ### 環境ファイル変更
 
