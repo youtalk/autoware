@@ -31,20 +31,21 @@ flowchart TB
         ARTIFACTS["MLモデル<br/>SHA256検証"]
     end
 
-    subgraph common["📋 共通: Ansibleロック（両方で使用）"]
+    subgraph common["📋 共通ロック（両方で使用）"]
         ANSIBLE["Ansibleロックファイル<br/>locked-versions-{distro}-{arch}.yaml"]
         ROS_APT["ROS2 APT Source<br/>バージョン固定"]
+        ROSDEP["rosdepロック<br/>rosdep-resolved.lock"]
     end
 
     subgraph docker_only["📋 Docker版のみ: 追加ロック"]
         BASE["Dockerベースイメージ<br/>ダイジェスト固定"]
-        ROSDEP["rosdepパッケージ<br/>rosdep-resolved.lock"]
         DOCKER_PIP["Dockerfile内Python<br/>バージョン固定"]
     end
 
-    NATIVE["ネイティブ版<br/>setup-dev-env.sh --locked"] --> ANSIBLE
-    DOCKER["Docker版<br/>Dockerfile"] --> |setup-dev-env.sh| ANSIBLE
-    DOCKER --> ROSDEP
+    NATIVE["ネイティブ版"] --> |setup-dev-env.sh| ANSIBLE
+    NATIVE --> |rosdep install| ROSDEP
+    DOCKER["Docker版"] --> |setup-dev-env.sh| ANSIBLE
+    DOCKER --> |rosdep install| ROSDEP
     DOCKER --> BASE
     DOCKER --> DOCKER_PIP
 
@@ -55,15 +56,24 @@ flowchart TB
 
 ### Docker版とネイティブ版の関係
 
-**重要**: Dockerコンテナのビルド時にも`setup-dev-env.sh`が実行され、Ansibleによるパッケージインストールが行われる。そのため、**Ansibleロックは両方で共通して使用される**。
+**重要**: ネイティブ版もDocker版も、フルセットアップ（ソースビルド含む）では同じ依存関係インストールフローを経る。
 
-| ロック種別 | ネイティブ版 | Docker版 |
-|-----------|:------------:|:--------:|
-| Ansibleロック（APT/Python） | ✅ | ✅ |
-| ROS2 APT Source固定 | ✅ | ✅ |
-| rosdep解決結果ロック | - | ✅ |
-| Dockerベースイメージダイジェスト | - | ✅ |
-| Dockerfile内Python固定 | - | ✅ |
+```
+1. setup-dev-env.sh  → Ansible実行 → 基本APTパッケージ
+2. vcs import        → ソースコード取得（autoware.repos）
+3. rosdep install    → ROS依存パッケージ（package.xmlから解決）
+4. colcon build      → ビルド
+```
+
+そのため、**Ansibleロック・rosdepロックは両方で共通して使用される**。Docker版のみの追加ロックは、Dockerビルドシステム固有のもの（ベースイメージ、Dockerfile内pip）のみ。
+
+| ロック種別 | ネイティブ版 | Docker版 | 用途 |
+|-----------|:------------:|:--------:|------|
+| Ansibleロック | ✅ | ✅ | setup-dev-env.sh用 |
+| ROS2 APT Source固定 | ✅ | ✅ | Ansible内で使用 |
+| rosdepロック | ✅ | ✅ | rosdep install用 |
+| Dockerベースイメージダイジェスト | - | ✅ | Docker固有 |
+| Dockerfile内Python固定 | - | ✅ | Docker固有 |
 
 ---
 

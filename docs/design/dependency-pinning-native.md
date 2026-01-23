@@ -8,24 +8,36 @@
 
 ## アーキテクチャ
 
+ネイティブ版のフルセットアップ（ソースビルド含む）では、以下の2段階で依存パッケージがインストールされる：
+
+1. **setup-dev-env.sh（Ansible）**: 基本的な開発ツール、ROS2、CUDA等
+2. **rosdep install**: Autowareソースコードの依存パッケージ（package.xmlから解決）
+
 ```mermaid
 flowchart TB
-    subgraph dev["開発セットアップ"]
-        A1[setup-dev-env.sh] --> B1[通常モード]
-        B1 --> C1["Ansible<br/>state: latest"]
-        C1 --> D1[最新バージョン<br/>インストール]
-        D1 --> E1[ロックファイル<br/>生成可能]
-        E1 --> F1["locked-versions-<br/>{distro}-{arch}.yaml"]
+    subgraph dev["開発セットアップ（通常モード）"]
+        A1[setup-dev-env.sh] --> B1["Ansible<br/>state: latest"]
+        B1 --> C1[vcs import]
+        C1 --> D1[rosdep install]
+        D1 --> E1[colcon build]
     end
 
-    subgraph release["リリースセットアップ"]
-        A2["setup-dev-env.sh<br/>--locked"] --> B2[--locked モード]
-        B2 --> C2["Ansible<br/>固定バージョン"]
-        C2 --> D2["locked-versions.yaml<br/>参照"]
-        D2 --> E2[固定バージョン<br/>インストール]
+    subgraph release["リリースセットアップ（--lockedモード）"]
+        A2["setup-dev-env.sh<br/>--locked"] --> B2["Ansible<br/>固定バージョン"]
+        B2 --> C2[vcs import]
+        C2 --> D2["rosdep install<br/>--locked"]
+        D2 --> E2[colcon build]
     end
 
-    F1 -.->|Git管理| D2
+    subgraph locks["ロックファイル"]
+        L1["ansible/vars/<br/>locked-versions-*.yaml"]
+        L2["lockfiles/<br/>rosdep-resolved.lock"]
+    end
+
+    B2 --> L1
+    D2 --> L2
+
+    style locks fill:#ffffcc
 ```
 
 ---
@@ -42,11 +54,19 @@ autoware/
 │   │   └── locked-versions-jazzy-arm64.yaml    # Jazzy/arm64用
 │   └── roles/
 │       └── */tasks/main.yaml                    # バージョン指定対応
+├── lockfiles/                                   # rosdepロック（Docker版と共通）
+│   ├── amd64/
+│   │   └── rosdep-resolved.lock
+│   └── arm64/
+│       └── rosdep-resolved.lock
 ├── scripts/
-│   ├── generate_ansible_lockfile.sh            # ロックファイル生成
-│   └── validate_ansible_lockfile.sh            # ロックファイル検証
+│   ├── generate_ansible_lockfile.sh            # Ansibleロックファイル生成
+│   ├── generate_rosdep_lockfile.sh             # rosdepロックファイル生成
+│   └── validate_lockfiles.sh                   # ロックファイル検証
 └── setup-dev-env.sh                            # --lockedオプション追加
 ```
+
+**注意**: `lockfiles/`ディレクトリはDocker版と共通で使用される。
 
 ---
 
