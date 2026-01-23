@@ -489,12 +489,76 @@ ROS_DISTRO=jazzy ./scripts/generate_ansible_lockfile.sh
 
 | ロール | パッケージカテゴリ | 優先度 |
 |--------|------------------|--------|
-| ros2 | ros2_packages | 高 |
+| ros2 | ros2_packages, **ros_apt_source** | 高 |
 | ros2_dev_tools | dev_tools_packages | 高 |
 | build_tools | build_packages | 中 |
 | system_libs | system_packages | 中 |
 | cuda | cuda_packages | 低（既に固定済み） |
 | tensorrt | tensorrt_packages | 低（既に固定済み） |
+
+---
+
+## 追加対応項目
+
+### ROS2 APT Sourceバージョン固定
+
+**現状の問題:**
+```yaml
+# ansible/roles/ros2/tasks/main.yaml
+- name: Get latest release information of ros-apt-source package
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest
+    return_content: true
+  register: ros2__ros_apt_release_info
+```
+→ **GitHub APIで「latest」を動的取得するため、再現性がない**
+
+**対応方法1: .envファイルでバージョン固定**
+
+```bash
+# amd64.env に追加
+ros_apt_source_version=0.4.1
+```
+
+```yaml
+# ansible/roles/ros2/tasks/main.yaml（修正後）
+- name: Set ros-apt-source version (locked)
+  ansible.builtin.set_fact:
+    ros2__ros_apt_source_version: "{{ ros_apt_source_version }}"
+  when: use_locked_versions | default(false)
+
+- name: Get latest release information of ros-apt-source package
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest
+    return_content: true
+  register: ros2__ros_apt_release_info
+  when: not (use_locked_versions | default(false))
+
+- name: Extract latest version of ros-apt-source package
+  ansible.builtin.set_fact:
+    ros2__ros_apt_source_version: "{{ (ros2__ros_apt_release_info.content | from_json).tag_name }}"
+  when: not (use_locked_versions | default(false))
+```
+
+**対応方法2: ロックファイルに含める**
+
+```yaml
+# ansible/vars/locked-versions-humble-amd64.yaml
+ros_apt_source:
+  version: "0.4.1"
+  url: "https://github.com/ros-infrastructure/ros-apt-source/releases/download/0.4.1/ros-apt-source_0.4.1_all.deb"
+  checksum: "sha256:abc123..."  # オプション: チェックサム検証
+```
+
+### バージョン確認方法
+
+```bash
+# 現在のros-apt-sourceリリース一覧を確認
+curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases | jq '.[].tag_name'
+
+# 最新バージョンを確認
+curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | jq '.tag_name'
+```
 
 ---
 

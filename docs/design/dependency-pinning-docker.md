@@ -267,6 +267,69 @@ autoware_base_image_digest=sha256:789xyz...  # 追加
 
 ---
 
+## 追加対応項目
+
+### Dockerベースイメージのダイジェスト固定
+
+**現状の問題:**
+```dockerfile
+# 現状: latestタグは常に変動
+ARG AUTOWARE_BASE_IMAGE=ghcr.io/autowarefoundation/autoware-base:latest
+```
+
+**対応後:**
+```dockerfile
+# ダイジェストで固定
+ARG BASE_IMAGE_DIGEST
+FROM ghcr.io/autowarefoundation/autoware-base@${BASE_IMAGE_DIGEST}
+```
+
+**ダイジェスト取得方法:**
+```bash
+# GitHub Container Registryからダイジェスト取得
+docker pull ghcr.io/autowarefoundation/autoware-base:latest
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/autowarefoundation/autoware-base:latest
+# 出力: ghcr.io/autowarefoundation/autoware-base@sha256:abc123...
+
+# または、GitHub APIから取得
+curl -s https://api.github.com/orgs/autowarefoundation/packages/container/autoware-base/versions | jq '.[0].name'
+```
+
+### Dockerfile内Pythonパッケージ固定
+
+**現状の問題:**
+```dockerfile
+# docker/tools/visualizer/Dockerfile
+pip install --no-cache-dir yamale xmlschema  # バージョン未指定
+```
+
+**対応方法1: インラインでバージョン指定**
+```dockerfile
+pip install --no-cache-dir yamale==5.2.1 xmlschema==3.4.5
+```
+
+**対応方法2: 専用requirements.txtを使用**
+```dockerfile
+COPY docker/tools/visualizer/requirements.lock /tmp/
+pip install --no-cache-dir -r /tmp/requirements.lock
+```
+
+**requirements.lock:**
+```
+# docker/tools/visualizer/requirements.lock
+yamale==5.2.1
+xmlschema==3.4.5
+```
+
+### 改修が必要なDockerfile一覧
+
+| ファイル | 未固定パッケージ | 対応 |
+|----------|-----------------|------|
+| `docker/tools/visualizer/Dockerfile` | yamale, xmlschema | バージョン指定追加 |
+| `docker/tools/scenario-simulator/Dockerfile` | yamale | バージョン指定追加 |
+
+---
+
 ## CI/CDワークフロー
 
 ### ロックファイル生成ワークフロー
