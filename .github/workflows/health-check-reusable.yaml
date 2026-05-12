@@ -90,7 +90,7 @@ jobs:
           echo "::endgroup::"
 
       - name: 🧹 Free disk space
-        if: inputs.build-type != 'main'
+        if: inputs.build-type != 'main' && runner.environment == 'github-hosted'
         uses: ./.github/actions/free-disk-space
 
       - name: 💾 Create additional swap
