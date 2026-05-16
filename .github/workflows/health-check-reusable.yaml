@@ -53,7 +53,10 @@ on:
 jobs:
   docker-build:
     if: ${{ inputs.run-condition }}
-    runs-on: ${{ fromJson(inputs.runner) }}
+    # When triggered by youtalk on the youtalk fork, run on Ubicloud 16-vCPU
+    # runners for faster turnaround. Other forks (incl. autowarefoundation)
+    # fall back to the input-supplied runner.
+    runs-on: ${{ (github.repository_owner == 'youtalk' && github.actor == 'youtalk') && fromJson(inputs.platform == 'amd64' && '["ubicloud-standard-16"]' || '["ubicloud-standard-16-arm"]') || fromJson(inputs.runner) }}
     permissions:
       contents: read
       packages: write
