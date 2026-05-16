@@ -64,7 +64,10 @@ on:
 jobs:
   build:
     name: ${{ inputs.bake-group }}
-    runs-on: ${{ inputs.platform == 'amd64' && inputs.runner-amd64 || inputs.runner-arm64 }}
+    # When triggered by youtalk on the youtalk fork, run on Ubicloud 16-vCPU
+    # runners for faster turnaround. Other forks (incl. autowarefoundation)
+    # fall back to the input-supplied runner.
+    runs-on: ${{ (github.repository_owner == 'youtalk' && github.actor == 'youtalk') && (inputs.platform == 'amd64' && 'ubicloud-standard-16' || 'ubicloud-standard-16-arm') || (inputs.platform == 'amd64' && inputs.runner-amd64 || inputs.runner-arm64) }}
     permissions:
       contents: read
       packages: write
