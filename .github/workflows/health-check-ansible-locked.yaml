@@ -134,7 +134,8 @@ jobs:
             jazzy) codename=noble ;;
             humble) codename=jammy ;;
           esac
-          apt-get install -y -qq ca-certificates >/dev/null
+          apt-get update -qq
+          apt-get install -y -qq ca-certificates gpgv >/dev/null
           install -m 0644 ansible/roles/ros2/files/ros-snapshot-archive-keyring.gpg \
             /usr/share/keyrings/ros-snapshot-archive-keyring.gpg
           cat > /etc/apt/sources.list.d/ros2-snapshot.sources <<EOF
