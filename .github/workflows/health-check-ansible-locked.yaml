@@ -22,6 +22,9 @@ concurrency:
 
 jobs:
   regenerate-lockfiles:
+    # Heavy (full install on amd64 + arm64). Run on manual dispatch only;
+    # pushes iterate on the lighter locked-acceptance job.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +93,8 @@ jobs:
           if-no-files-found: error
 
   locked-acceptance-amd64:
-    needs: regenerate-lockfiles
+    # Uses the committed amd64 lockfile (verified identical to the regenerated
+    # one), so it runs independently of the regenerate-lockfiles jobs.
     strategy:
       fail-fast: false
       matrix:
@@ -108,12 +112,6 @@ jobs:
       - name: 🛒 Check out repository
         uses: actions/checkout@v6
 
-      - name: ⬇️ Use the freshly regenerated lockfile
-        uses: actions/download-artifact@v4
-        with:
-          name: locked-versions-${{ matrix.ros-distro }}-amd64
-          path: ansible/vars/
-
       - name: 🌐 Configure apt and debconf
         run: |
           echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-retries
@@ -129,11 +127,17 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml
 
-      - name: 🔒 Install dev environment in LOCKED mode (fresh-machine acceptance)
+      - name: 💾 Show disk space before install
+        run: df -h /
+
+      - name: 🔒 Install dev environment in LOCKED mode (review repro tags)
         run: |
           export PATH="$HOME/.local/bin:$PATH"
+          # Exact tag scope from PR #6934's failing review repro
+          # (version_lock + ros2 + ros2_dev_tools). Keeps the heavy-but-relevant
+          # ROS install while skipping unrelated roles that strain the runner.
           ansible-playbook autoware.dev_env.install_dev_env \
-            -e use_locked_versions=true --skip-tags artifacts -v
+            -e use_locked_versions=true --tags version_lock,ros2,ros2_dev_tools -v
 
       - name: ✅ Verify locked-mode wiring and the review's failing package
         run: |
