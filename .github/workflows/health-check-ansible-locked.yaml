@@ -1,0 +1,147 @@
+name: health-check-ansible-locked
+
+# Fork-only CI scaffolding (youtalk/autoware). NOT part of the upstream PR.
+# Purpose:
+#   1. Regenerate the per-distro/arch lockfiles on clean amd64 + arm64 runners
+#      (unlocked install -> generator). arm64 lockfiles are produced here because
+#      they cannot be filled on an amd64 machine.
+#   2. Run the locked-mode acceptance install on amd64 using the freshly
+#      regenerated (accurate) lockfile, reproducing the fresh-machine scenario
+#      from PR #6934's review.
+# Regenerated lockfiles are uploaded as artifacts; nothing is committed by CI.
+
+on:
+  push:
+    branches:
+      - ci/ansible-locked-regen
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate-lockfiles:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            ros-distro: humble
+            snapshot-date: "2026-05-14"
+            arch: amd64
+            runner: ubuntu-24.04
+          - image: ubuntu:24.04
+            ros-distro: jazzy
+            snapshot-date: "2026-04-13"
+            arch: amd64
+            runner: ubuntu-24.04
+          - image: ubuntu:22.04
+            ros-distro: humble
+            snapshot-date: "2026-05-14"
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - image: ubuntu:24.04
+            ros-distro: jazzy
+            snapshot-date: "2026-04-13"
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: 🛒 Check out repository
+        uses: actions/checkout@v6
+
+      - name: 🌐 Configure apt and debconf
+        run: |
+          echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-retries
+          echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99-retries
+          echo 'Acquire::https::Timeout "30";' >> /etc/apt/apt.conf.d/99-retries
+          echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+      - name: 🔧 Install ansible
+        run: bash ansible/scripts/install-ansible.sh
+
+      - name: 📚 Install Galaxy collections
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml
+
+      - name: 🚀 Install dev environment (default mode, to capture versions)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-playbook autoware.dev_env.install_dev_env --skip-tags artifacts -v
+
+      - name: 🔁 Regenerate ${{ matrix.ros-distro }}-${{ matrix.arch }} lockfile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ROS_DISTRO=${{ matrix.ros-distro }} ROS_SNAPSHOT_DATE=${{ matrix.snapshot-date }} \
+            ./ansible/scripts/generate_ansible_lockfile.sh
+          echo "::group::regenerated locked-versions-${{ matrix.ros-distro }}-${{ matrix.arch }}.yaml"
+          cat ansible/vars/locked-versions-${{ matrix.ros-distro }}-${{ matrix.arch }}.yaml
+          echo "::endgroup::"
+
+      - name: ⬆️ Upload regenerated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: locked-versions-${{ matrix.ros-distro }}-${{ matrix.arch }}
+          path: ansible/vars/locked-versions-${{ matrix.ros-distro }}-${{ matrix.arch }}.yaml
+          if-no-files-found: error
+
+  locked-acceptance-amd64:
+    needs: regenerate-lockfiles
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:22.04
+            ros-distro: humble
+            snapshot-date: "2026-05-14"
+          - image: ubuntu:24.04
+            ros-distro: jazzy
+            snapshot-date: "2026-04-13"
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: 🛒 Check out repository
+        uses: actions/checkout@v6
+
+      - name: ⬇️ Use the freshly regenerated lockfile
+        uses: actions/download-artifact@v4
+        with:
+          name: locked-versions-${{ matrix.ros-distro }}-amd64
+          path: ansible/vars/
+
+      - name: 🌐 Configure apt and debconf
+        run: |
+          echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-retries
+          echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99-retries
+          echo 'Acquire::https::Timeout "30";' >> /etc/apt/apt.conf.d/99-retries
+          echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+      - name: 🔧 Install ansible
+        run: bash ansible/scripts/install-ansible.sh
+
+      - name: 📚 Install Galaxy collections
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml
+
+      - name: 🔒 Install dev environment in LOCKED mode (fresh-machine acceptance)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-playbook autoware.dev_env.install_dev_env \
+            -e use_locked_versions=true --skip-tags artifacts -v
+
+      - name: ✅ Verify locked-mode wiring and the review's failing package
+        run: |
+          set -eux
+          test -f /etc/apt/sources.list.d/ros2-snapshot.sources
+          grep -q "snapshots.ros.org/${{ matrix.ros-distro }}/${{ matrix.snapshot-date }}/ubuntu" \
+            /etc/apt/sources.list.d/ros2-snapshot.sources
+          test -f /etc/apt/preferences.d/autoware-lock
+          # python3-colcon-mixin is the package that aborted the install in the
+          # original review; it must be present in locked mode now.
+          dpkg -s python3-colcon-mixin >/dev/null
