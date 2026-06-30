@@ -1,3 +1,5 @@
 collections:
   - source: ./ansible
     type: dir
+
+# ci: ubicloud routing verification (no-op)
