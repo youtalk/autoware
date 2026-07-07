@@ -1,0 +1,68 @@
+# Fork-only Phase B verification: run the locked `install_image_deps --tags core`
+# on the locked base image twice and confirm identical resolved package versions.
+# Not for upstream — proves the USE_LOCKFILE apt/ROS resolution is reproducible on
+# Ubicloud without needing the src/ tree or a colcon build.
+name: docker-locked-repro
+on:
+  # push-triggered so it runs without being on the fork's default branch
+  # (workflow_dispatch requires the default branch). Fork-only CI branch.
+  push:
+    branches: [ci/docker-locked-repro]
+  workflow_dispatch:
+    inputs:
+      ros_distro:
+        description: ROS distro
+        default: humble
+        type: choice
+        options: [humble, jazzy]
+
+jobs:
+  core-install-smoke:
+    runs-on: ubicloud-standard-16
+    env:
+      ROS_DISTRO: ${{ inputs.ros_distro || 'humble' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Confirm base image is digest-pinned in locked mode
+        run: |
+          set -euo pipefail
+          USE_LOCKFILE=true ROS_DISTRO="${ROS_DISTRO}" \
+            docker buildx bake -f docker/docker-bake.hcl base --print | tee bake-base.json
+          # bake --print emits BASE_IMAGE_DIGEST as an arg; it does NOT render the
+          # composed `FROM ros:...@sha256:` line, so check the arg value directly.
+          grep -q '"BASE_IMAGE_DIGEST": "@sha256:' bake-base.json
+
+      - name: Run locked install_image_deps --tags core twice and diff versions
+        run: |
+          set -euo pipefail
+          # --no-cache forces genuine apt/rosdep re-resolution each build (else
+          # build 2 hits the layer cache and is trivially identical). Each build
+          # rebuilds the locked base (target:base context) + runs the locked core
+          # install; no src/ or colcon needed.
+          for i in 1 2; do
+            USE_LOCKFILE=true ROS_DISTRO="${ROS_DISTRO}" \
+              docker buildx bake \
+                -f docker/docker-bake.hcl -f docker/docker-bake-verify.hcl \
+                verify-core-install --load --no-cache
+            docker run --rm --entrypoint bash "verify-core:${ROS_DISTRO}" \
+              -c 'dpkg-query -W -f="${Package} ${Version}\n" | sort' > "pkgs-${i}.txt"
+            echo "Build ${i}: $(wc -l < pkgs-${i}.txt) packages"
+          done
+          echo "=== diff (empty means reproducible) ==="
+          if diff -u pkgs-1.txt pkgs-2.txt; then
+            echo "REPRODUCIBLE: locked install_image_deps --tags core gives identical package versions (${ROS_DISTRO})."
+          else
+            echo "DRIFT DETECTED between the two locked builds." >&2
+            exit 1
+          fi
+
+      - name: Upload package lists
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-core-install-${{ env.ROS_DISTRO }}
+          path: pkgs-*.txt
