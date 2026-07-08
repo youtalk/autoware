@@ -1,0 +1,57 @@
+# Fork-only cuda reproducibility verification (NOT for upstream): build the
+# locked base-cuda-devel twice and confirm identical resolved NVIDIA package
+# versions. Meaningful only once feat/docker-cuda-version-lock's lockfiles carry
+# a populated nvidia_pins section (run regenerate-nvidia-pins first) — with an
+# empty nvidia_pins the NVIDIA layer is not frozen and drift is expected.
+#
+# Gated behind the repo variable RUN_CUDA_REPRO so pushing this branch does not
+# auto-fire two CUDA builds. To run it: set RUN_CUDA_REPRO=true (Settings >
+# Secrets and variables > Actions > Variables), then re-run this workflow.
+name: docker-locked-repro-cuda
+on:
+  push:
+    branches: [ci/docker-locked-repro-cuda]
+
+jobs:
+  cuda-install-smoke:
+    if: ${{ vars.RUN_CUDA_REPRO == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [humble, jazzy]
+    runs-on: ubicloud-standard-16
+    env:
+      ROS_DISTRO: ${{ matrix.distro }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build locked base-cuda-devel twice and diff NVIDIA versions
+        run: |
+          set -euo pipefail
+          # --no-cache forces genuine apt re-resolution each build (else build 2
+          # hits the layer cache and is trivially identical).
+          for i in 1 2; do
+            USE_LOCKFILE=true ROS_DISTRO="${ROS_DISTRO}" \
+              docker buildx bake \
+                -f docker/docker-bake.hcl -f docker/docker-bake-verify.hcl \
+                verify-cuda-install --load --no-cache
+            docker run --rm --entrypoint bash "verify-cuda:${ROS_DISTRO}" -c '
+              dpkg-query -W -f="${Package} ${Version}\n" \
+                | grep -E "^(cuda|lib(cu|nv|npp)|tensorrt)" | sort
+            ' > "nv-${i}.txt"
+            echo "Build ${i}: $(wc -l < nv-${i}.txt) NVIDIA packages"
+          done
+          echo "=== diff (empty means reproducible) ==="
+          if diff -u nv-1.txt nv-2.txt; then
+            echo "REPRODUCIBLE: locked base-cuda-devel gives identical NVIDIA versions (${ROS_DISTRO})."
+          else
+            echo "DRIFT DETECTED between the two locked cuda builds (populate nvidia_pins first)." >&2
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pkgs-cuda-install-${{ matrix.distro }}
+          path: nv-*.txt
