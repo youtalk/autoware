@@ -1,0 +1,7 @@
+# Invalid deploy config: references an env_file that does not exist. `docker compose config
+# --images` itself must fail here — deploy_check.sh must surface that failure as itself (exit 2,
+# a distinct "docker compose ... failed" message) rather than misreporting it as "no images".
+services:
+  provider:
+    image: autoware-admission-self-test-provider
+    env_file: ./this-env-file-does-not-exist.env
