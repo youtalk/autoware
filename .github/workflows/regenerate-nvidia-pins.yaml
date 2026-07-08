@@ -1,0 +1,63 @@
+# Fork-only: generate nvidia_pins for each cell by building base-cuda-devel
+# unlocked and recording its installed NVIDIA closure with emit_nvidia_pins.py.
+# NOT for upstream.
+#
+# Gated behind the repo variable RUN_NVIDIA_PINS_GEN so merely pushing this
+# branch does not fire four CUDA image builds. To run it: set the repository
+# variable RUN_NVIDIA_PINS_GEN=true (Settings > Secrets and variables >
+# Actions > Variables), then re-run this workflow (or push an empty commit).
+# When green, download the four lockfile artifacts and commit them onto
+# feat/docker-cuda-version-lock.
+name: regenerate-nvidia-pins
+on:
+  push:
+    branches: [ci/regenerate-nvidia-pins]
+
+jobs:
+  gen:
+    if: ${{ vars.RUN_NVIDIA_PINS_GEN == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { distro: humble, arch: amd64, runner: ubicloud-standard-16 }
+          - { distro: jazzy, arch: amd64, runner: ubicloud-standard-16 }
+          - { distro: humble, arch: arm64, runner: ubicloud-standard-16-arm }
+          - { distro: jazzy, arch: arm64, runner: ubicloud-standard-16-arm }
+    runs-on: ${{ matrix.runner }}
+    env:
+      ROS_DISTRO: ${{ matrix.distro }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build base-cuda-devel (unlocked) and record nvidia_pins
+        run: |
+          set -euo pipefail
+          # Resolve the target's real image tag so `docker run` can find it after --load.
+          TAG=$(USE_LOCKFILE=false ROS_DISTRO="${ROS_DISTRO}" \
+            docker buildx bake -f docker/docker-bake.hcl base-cuda-devel --print \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["target"]["base-cuda-devel"]["tags"][0])')
+          echo "base-cuda-devel tag: ${TAG}"
+
+          USE_LOCKFILE=false ROS_DISTRO="${ROS_DISTRO}" \
+            docker buildx bake -f docker/docker-bake.hcl base-cuda-devel --load
+
+          # base-cuda-devel's NVIDIA apt source (cuda-keyring) is baked, but the
+          # index lives in a build cache mount, so repopulate it in the live
+          # container before recording the closure. Runs as the image's default
+          # (root) user, which can write the bind-mounted lockfile.
+          docker run --rm -v "${PWD}:/repo" -w /repo --entrypoint bash "${TAG}" -c '
+            set -euo pipefail
+            apt-get update -qq
+            python3 ansible/scripts/emit_nvidia_pins.py \
+              "ansible/vars/locked-versions-'"${ROS_DISTRO}"'-'"${ARCH}"'.yaml"
+          '
+          ansible/scripts/validate_lockfiles.sh \
+            "ansible/vars/locked-versions-${ROS_DISTRO}-${ARCH}.yaml"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lockfile-${{ matrix.distro }}-${{ matrix.arch }}
+          path: ansible/vars/locked-versions-${{ matrix.distro }}-${{ matrix.arch }}.yaml
