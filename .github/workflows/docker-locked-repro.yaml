@@ -48,9 +48,18 @@ jobs:
               docker buildx bake \
                 -f docker/docker-bake.hcl -f docker/docker-bake-verify.hcl \
                 verify-core-install --load --no-cache
+            # Escape $ so the dpkg-query format reaches the container's
+            # dpkg-query literally instead of being expanded to empty by the
+            # container shell (unescaped ${Package} -> blank lines -> a vacuous
+            # compare of two identical blank files that always "passes").
             docker run --rm --entrypoint bash "verify-core:${ROS_DISTRO}" \
-              -c 'dpkg-query -W -f="${Package} ${Version}\n" | sort' > "pkgs-${i}.txt"
-            echo "Build ${i}: $(wc -l < pkgs-${i}.txt) packages"
+              -c 'dpkg-query -W -f="\${Package} \${Version}\n" | sort' > "pkgs-${i}.txt"
+            n=$(grep -cE '^[a-z0-9]' "pkgs-${i}.txt" || true)
+            echo "Build ${i}: ${n} packages"
+            if [ "${n}" -eq 0 ]; then
+              echo "ERROR: captured 0 named packages; dpkg-query produced no real output." >&2
+              exit 1
+            fi
           done
           echo "=== diff (empty means reproducible) ==="
           if diff -u pkgs-1.txt pkgs-2.txt; then
