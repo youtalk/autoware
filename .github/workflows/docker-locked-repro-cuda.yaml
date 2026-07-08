@@ -36,11 +36,19 @@ jobs:
               docker buildx bake \
                 -f docker/docker-bake.hcl -f docker/docker-bake-verify.hcl \
                 verify-cuda-install --load --no-cache
+            # Escape $ so the dpkg-query format reaches the container's
+            # dpkg-query literally instead of being expanded by the container
+            # shell (unescaped ${Package} expands to empty -> blank output).
             docker run --rm --entrypoint bash "verify-cuda:${ROS_DISTRO}" -c '
-              dpkg-query -W -f="${Package} ${Version}\n" \
+              dpkg-query -W -f="\${Package} \${Version}\n" \
                 | grep -E "^(cuda|lib(cu|nv|npp)|tensorrt)" | sort
             ' > "nv-${i}.txt"
-            echo "Build ${i}: $(wc -l < nv-${i}.txt) NVIDIA packages"
+            n=$(wc -l < "nv-${i}.txt")
+            echo "Build ${i}: ${n} NVIDIA packages"
+            if [ "${n}" -eq 0 ]; then
+              echo "ERROR: captured 0 NVIDIA packages; dpkg-query/grep produced nothing." >&2
+              exit 1
+            fi
           done
           echo "=== diff (empty means reproducible) ==="
           if diff -u nv-1.txt nv-2.txt; then
