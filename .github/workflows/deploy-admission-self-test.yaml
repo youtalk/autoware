@@ -1,0 +1,38 @@
+name: deploy-admission-self-test
+
+on:
+  pull_request:
+    paths:
+      - docker/tools/**
+      - .github/workflows/deploy-admission-self-test.yaml
+  workflow_dispatch:
+    inputs:
+      universe-repo:
+        description: autoware_universe repository (owner/name) to source the admission package from
+        type: string
+        default: autowarefoundation/autoware_universe
+      universe-ref:
+        description: Git ref of the admission package source
+        type: string
+        default: main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-admission-self-test:
+    # Advisory (non-required) job. It becomes meaningful once autoware_component_interface_admission
+    # merges into autoware_universe; until then a default (main) run fails fast because the clone
+    # does not yet contain the package. Use workflow_dispatch with universe-repo / universe-ref to
+    # point it at the fork branch that carries the package in the meantime.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run the deploy-admission gate self-test
+        env:
+          UNIVERSE_REPO: ${{ github.event.inputs.universe-repo || 'youtalk/autoware_universe' }}
+          UNIVERSE_REF: ${{ github.event.inputs.universe-ref || 'feat/oss-if-interface-admission' }}
+        run: ./docker/tools/test/run_self_test.sh
