@@ -33,6 +33,6 @@ jobs:
 
       - name: Run the deploy-admission gate self-test
         env:
-          UNIVERSE_REPO: ${{ github.event.inputs.universe-repo || 'autowarefoundation/autoware_universe' }}
-          UNIVERSE_REF: ${{ github.event.inputs.universe-ref || 'main' }}
+          UNIVERSE_REPO: ${{ github.event.inputs.universe-repo || 'youtalk/autoware_universe' }}
+          UNIVERSE_REF: ${{ github.event.inputs.universe-ref || 'feat/oss-if-interface-admission' }}
         run: ./docker/tools/test/run_self_test.sh
