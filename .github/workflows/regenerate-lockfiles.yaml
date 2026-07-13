@@ -26,6 +26,9 @@ on:
   repository_dispatch:
     types:
       - regenerate-lockfiles
+  push:
+    branches:
+      - ci/lockfile-regen-validate
 
 concurrency:
   group: ${{ github.workflow }}
@@ -37,20 +40,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { distro: humble, arch: amd64, image: ubuntu:22.04, runner: ubuntu-24.04 }
-          - { distro: jazzy, arch: amd64, image: ubuntu:24.04, runner: ubuntu-24.04 }
-          - { distro: humble, arch: arm64, image: ubuntu:22.04, runner: ubuntu-24.04-arm }
-          - { distro: jazzy, arch: arm64, image: ubuntu:24.04, runner: ubuntu-24.04-arm }
+          - { distro: humble, arch: amd64, image: ubuntu:22.04, runner: ubicloud-standard-16 }
+          - { distro: jazzy, arch: amd64, image: ubuntu:24.04, runner: ubicloud-standard-16 }
+          - { distro: humble, arch: arm64, image: ubuntu:22.04, runner: ubicloud-standard-16-arm }
+          - { distro: jazzy, arch: arm64, image: ubuntu:24.04, runner: ubicloud-standard-16-arm }
     runs-on: ${{ matrix.runner }}
     container:
       image: ${{ matrix.image }}
     steps:
+      - name: 🛒 Check out repository
+        uses: actions/checkout@v6
+
       - name: 🗓️ Resolve snapshot date for ${{ matrix.distro }}
         id: date
         env:
           DISPATCH_DATE: ${{ github.event.inputs[format('{0}_snapshot_date', matrix.distro)] || github.event.client_payload[format('{0}_snapshot_date', matrix.distro)] }}
         run: |
           set -eu
+          if [ -z "${DISPATCH_DATE:-}" ]; then
+            # Fork dry run (push event, no inputs): reuse the committed snapshot date.
+            DISPATCH_DATE=$(sed -n 's/^ros_snapshot_date:[[:space:]]*"\{0,1\}\([0-9-]*\).*/\1/p' \
+              "ansible/vars/locked-versions-${{ matrix.distro }}-${{ matrix.arch }}.yaml")
+          fi
           if [ -z "${DISPATCH_DATE:-}" ]; then
             echo "::error::no snapshot date supplied for ${{ matrix.distro }}"
             exit 1
@@ -60,9 +71,6 @@ jobs:
             *) echo "::error::snapshot date '$DISPATCH_DATE' is not YYYY-MM-DD"; exit 1 ;;
           esac
           echo "value=$DISPATCH_DATE" >> "$GITHUB_OUTPUT"
-
-      - name: 🛒 Check out repository
-        uses: actions/checkout@v6
 
       - name: 🌐 Configure apt and debconf
         run: |
