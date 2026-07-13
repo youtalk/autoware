@@ -4,7 +4,6 @@
 # Ubuntu: 22.04 (jammy)
 #
 # ros_snapshot_date freezes the entire ROS closure via snapshots.ros.org.
-# apt_pins are finalized by ansible/scripts/generate_ansible_lockfile.sh.
 ros_snapshot_date: "2026-05-14"
 apt_pins:
   ccache: 4.5.1-1
