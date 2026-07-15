@@ -58,9 +58,12 @@ jobs:
         run: |
           set -eu
           if [ -z "${DISPATCH_DATE:-}" ]; then
-            # Fork dry run (push event, no inputs): reuse the committed snapshot date.
-            DISPATCH_DATE=$(sed -n 's/^ros_snapshot_date:[[:space:]]*"\{0,1\}\([0-9-]*\).*/\1/p' \
-              "ansible/vars/locked-versions-${{ matrix.distro }}-${{ matrix.arch }}.yaml")
+            # Fork dry run (push event, no inputs): freeze against today, matching the
+            # unlocked-latest install this run actually performs. Reusing the committed
+            # date would stamp a snapshot the regenerated pins were never resolved from.
+            # The dry run never opens a PR (see open-pr gating), so this date is only a
+            # label on the CI artifact.
+            DISPATCH_DATE=$(date -u +%F)
           fi
           if [ -z "${DISPATCH_DATE:-}" ]; then
             echo "::error::no snapshot date supplied for ${{ matrix.distro }}"
@@ -210,9 +213,14 @@ jobs:
             git --no-pager diff --stat -- ansible/vars/ docker/docker-bake.hcl
           fi
 
+      - name: 🏁 Dry-run notice (push)
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          echo "Fork dry run (push): pipeline verified through validate + diff; skipping branch push and PR creation."
+
       - name: 🎫 Generate GitHub App token
         id: app-token
-        if: ${{ steps.diff.outputs.changed == 'true' }}
+        if: ${{ steps.diff.outputs.changed == 'true' && github.event_name != 'push' }}
         uses: tibdex/github-app-token@v2
         continue-on-error: true
         with:
@@ -220,7 +228,7 @@ jobs:
           private_key: ${{ secrets.PRIVATE_KEY }}
 
       - name: 🚀 Open or update the regenerate PR
-        if: ${{ steps.diff.outputs.changed == 'true' }}
+        if: ${{ steps.diff.outputs.changed == 'true' && github.event_name != 'push' }}
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REASON: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'dependency advisory / manual dispatch' }}
