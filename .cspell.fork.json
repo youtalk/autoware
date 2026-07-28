@@ -1,0 +1,8 @@
+{
+  "import": ["./.cspell.json"],
+  "ignorePaths": [
+    ".github/workflows/docker-build.yaml",
+    ".github/workflows/health-check-reusable.yaml"
+  ],
+  "words": ["ubicloud", "Ubicloud"]
+}
