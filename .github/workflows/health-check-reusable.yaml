@@ -53,6 +53,7 @@ on:
 jobs:
   docker-build:
     if: ${{ inputs.run-condition }}
+    # cspell:ignore ubicloud
     # When triggered by youtalk on the youtalk fork, run on Ubicloud 16-vCPU
     # runners for faster turnaround. Other forks (incl. autowarefoundation)
     # fall back to the input-supplied runner.

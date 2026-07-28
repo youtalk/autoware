@@ -22,12 +22,6 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/spell-check@v1
         with:
           cspell-json-url: https://raw.githubusercontent.com/autowarefoundation/autoware-spell-check-dict/main/.cspell.json
-          # youtalk fork only: imports the real .cspell.json and additionally
-          # ignores the Ubicloud-routing workflow files. Kept in a separate
-          # file (rather than editing .cspell.json's ignorePaths/words
-          # directly) so this fork-only setting never conflicts with PRs
-          # staged from upstream, which touch .cspell.json's word list.
-          local-cspell-json: .cspell.fork.json
           dict-packages: |
             https://github.com/autowarefoundation/autoware-spell-check-dict
             https://github.com/tier4/cspell-dicts

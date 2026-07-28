@@ -1,9 +1,0 @@
-{
-  "import": ["./.cspell.json"],
-  "ignorePaths": [
-    ".github/workflows/docker-build.yaml",
-    ".github/workflows/health-check-reusable.yaml",
-    "ansible/vars/"
-  ],
-  "words": ["ubicloud", "Ubicloud"]
-}
