@@ -33,6 +33,6 @@ jobs:
 
       - name: Run the deploy-admission gate self-test
         env:
-          CORE_REPO: ${{ github.event.inputs.core-repo || 'autowarefoundation/autoware_core' }}
-          CORE_REF: ${{ github.event.inputs.core-ref || 'main' }}
+          CORE_REPO: ${{ github.event.inputs.core-repo || 'youtalk/autoware_core' }}
+          CORE_REF: ${{ github.event.inputs.core-ref || 'feat/interface-admission-core' }}
         run: ./docker/tools/test/run_self_test.sh
