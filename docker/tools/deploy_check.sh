@@ -83,12 +83,17 @@ for img in "${images[@]}"; do
             exit 2
         fi
         # The container is created but NEVER started: docker cp reads the image filesystem.
+        # `docker rm -f` is deliberately non-fatal here (`|| echo ... >&2` instead of a bare call):
+        # under `set -e`, an unguarded call would let a cleanup hiccup (daemon blip, container
+        # already gone) abort the script with docker's own exit status instead of the 0/1/2
+        # contract, and on the failure branch below it would abort BEFORE the real diagnostic ever
+        # ran. A leaked throwaway container is worth a warning, never a wrong exit code.
         if ! docker cp "${cid}:/opt/autoware/share" "${workdir}/share_${i}" 2>"${workdir}/cp_err"; then
-            docker rm -f "${cid}" >/dev/null
+            docker rm -f "${cid}" >/dev/null 2>&1 || echo "deploy_check: warning: failed to remove throwaway container ${cid}" >&2
             echo "deploy_check: image ${img} has neither the ${LABEL} label nor /opt/autoware/share - not IF-versioning conformant" >&2
             exit 2
         fi
-        docker rm -f "${cid}" >/dev/null
+        docker rm -f "${cid}" >/dev/null 2>&1 || echo "deploy_check: warning: failed to remove throwaway container ${cid}" >&2
         found=0
         while IFS= read -r frag; do
             cp "${frag}" "${workdir}/manifest_${i}_${found}.json"
