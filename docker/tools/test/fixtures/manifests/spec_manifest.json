@@ -1,0 +1,13 @@
+{
+  "owner": "autowarefoundation",
+  "qos_semantics": "pivot",
+  "interfaces": [
+    {
+      "domain": "planning",
+      "interface": "/planning/scenario_planning/trajectory",
+      "type": "autoware_planning_msgs/msg/Trajectory",
+      "kind": "topic",
+      "qos": { "reliability": "reliable", "durability": "volatile", "depth": 1 }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: deploy-admission-self-test
+
+on:
+  pull_request:
+    paths:
+      - docker/tools/**
+      - .github/workflows/deploy-admission-self-test.yaml
+  workflow_dispatch:
+    inputs:
+      core-repo:
+        description: autoware_core repository (owner/name) to source the admission package from
+        type: string
+        default: autowarefoundation/autoware_core
+      core-ref:
+        description: Git ref of the admission package source
+        type: string
+        default: main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-admission-self-test:
+    # Advisory (non-required) job. It becomes meaningful once autoware_component_interface_admission
+    # merges into autoware_core; until then a default (main) run fails fast because the clone does
+    # not yet contain the package. Use workflow_dispatch with core-repo / core-ref to point it at a
+    # branch that carries the package in the meantime.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run the deploy-admission gate self-test
+        env:
+          CORE_REPO: ${{ github.event.inputs.core-repo || 'youtalk/autoware_core' }}
+          CORE_REF: ${{ github.event.inputs.core-ref || 'feat/interface-admission-core' }}
+        run: ./docker/tools/test/run_self_test.sh
