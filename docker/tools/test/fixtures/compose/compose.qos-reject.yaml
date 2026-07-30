@@ -1,0 +1,7 @@
+# QoS pivot rejection: a lone provider offers best_effort for an interface whose registered pivot
+# (the fixture spec manifest baked into the tool image at /opt/autoware/interface_manifest.json) is
+# reliable. The pivot check is per-endpoint, so this single publisher-only image is enough to
+# reject (exit 1) -- no consumer is needed for the violation to be checkable.
+services:
+  provider:
+    image: autoware-admission-self-test-qos-provider
