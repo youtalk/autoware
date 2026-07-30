@@ -4,20 +4,30 @@
 # It builds a dedicated ADMIT_TOOL_IMAGE that contains manifest_admit from
 # autoware_component_interface_admission, builds a matrix of label-only fixture images (each
 # carrying a fixture interface manifest as the OCI label org.autoware.interface_manifest), and
-# asserts deploy_check.sh's exit code (and, for broken-config, its diagnostic message) on seven
+# asserts deploy_check.sh's exit code (and, for broken-config, its diagnostic message) on nine
 # composed image sets:
-#   compatible    -> 0 (accepted)
-#   incompatible  -> 1 (MAJOR mismatch)
-#   no-provider   -> 1 (required interface with no provider in the set)
-#   unlabeled     -> 2 (a present image lacks the conformance label AND carries no installed
-#                    interface manifest fragment)
-#   broken-config -> 2 (`docker compose config` itself fails, e.g. an unset required interpolation
-#                    variable — must be reported as a compose failure, not misreported as "no
-#                    images")
-#   fragments     -> 0 (a label-less image falls back to its installed
-#                    interface_manifest_fragment.json and is still admitted)
-#   qos-reject    -> 1 (a provider's offered QoS ranks below the pivot registered in the fixture
-#                    spec manifest baked into the tool image)
+#   compatible         -> 0 (accepted)
+#   incompatible       -> 1 (MAJOR mismatch)
+#   no-provider        -> 1 (required interface with no provider in the set)
+#   unlabeled          -> 2 (a present image lacks the conformance label AND carries no installed
+#                        interface manifest fragment)
+#   broken-config      -> 2 (`docker compose config` itself fails, e.g. an unset required
+#                        interpolation variable — must be reported as a compose failure, not
+#                        misreported as "no images")
+#   fragments          -> 0 (a label-less image falls back to its installed
+#                        interface_manifest_fragment.json and is still admitted)
+#   qos-reject         -> 1 (a provider's offered QoS ranks below the pivot registered in the
+#                        fixture spec manifest baked into the tool image)
+#   qos-pivot-consumer -> 1 (a consumer's required QoS ranks above that same pivot)
+#   multi-fragment     -> 1 (one image carries two installed fragments at two different depths —
+#                        one at the documented path, one nested one level deeper the way the
+#                        install(DIRECTORY config ...) CMake trap would install it — and the
+#                        deeper one's unmet requirement must still be caught: NO_PROVIDER)
+#
+# It also builds a second, spec-manifest-less variant of the tool image and runs it directly
+# (bypassing deploy_check.sh) to assert that admit-tool-entrypoint.sh itself warns on stderr when it
+# finds no spec manifest to pass — the tool-side half of the same no-silent-no-op requirement
+# manifest_admit's own CLI test covers on the library side.
 #
 # Admission-tool source — two modes:
 #   * CORE_LOCAL_PATH=<dir>  build the package from a local checkout (the developer loop). The
@@ -100,6 +110,16 @@ DOCKER_BUILDKIT=1 docker build \
     -t "${TOOL_IMAGE}" "${workdir}"
 built_images+=("${TOOL_IMAGE}")
 
+# ---- 2b. Derive a spec-manifest-less tool image, to test admit-tool-entrypoint.sh's own warning --
+# Important 3 requires BOTH manifest_admit itself (covered at the package level, not here) AND
+# admit-tool-entrypoint.sh (asserted below) to warn on stderr when no spec manifest is available,
+# so pivot enforcement never silently no-ops anywhere in the chain.
+NO_SPEC_TOOL_IMAGE="${TAG_PREFIX}admit-tool-no-spec"
+log "building ${NO_SPEC_TOOL_IMAGE} (no spec manifest baked in)"
+printf 'FROM %s\nRUN rm -f /opt/autoware/interface_manifest.json\n' "${TOOL_IMAGE}" |
+    docker build -t "${NO_SPEC_TOOL_IMAGE}" -
+built_images+=("${NO_SPEC_TOOL_IMAGE}")
+
 # ---- 3. Build the label-only and fragment-only fixture images -------------------------------
 # Each labeled image carries its fixture manifest (minified + validated) as the OCI label; the
 # unlabeled image carries neither a label nor a fragment. FROM scratch keeps them empty — the gate
@@ -141,14 +161,41 @@ build_fragments_image() {
     docker build -t "${tag}" "${ctx}"
     built_images+=("${tag}")
 }
+# Builds an image carrying NO org.autoware.interface_manifest label, with two installed manifest
+# fragments for two different packages at two different depths: one at the documented depth-2 path
+# (share/<pkg>/interface_manifest_fragment.json) and one nested one level deeper
+# (share/<pkg>/config/interface_manifest_fragment.json) -- the on-disk shape produced by the CMake
+# trap install(DIRECTORY config DESTINATION share/${PROJECT_NAME}) documented (and warned against)
+# in autoware_component_interface_utils' README. Exercises the same real-package-shaped multi-node /
+# multi-fragment layout deploy_check.sh's fragment discovery must handle regardless of install depth.
+build_multi_fragment_image() {
+    local tag="$1" canonical_manifest="$2" nested_manifest="$3"
+    local ctx
+    ctx="$(mktemp -d "${workdir}/multi_fragment_ctx.XXXXXX")"
+    mkdir -p "${ctx}/share/fixture_pkg_canonical" "${ctx}/share/fixture_pkg_nested/config"
+    cp "${canonical_manifest}" "${ctx}/share/fixture_pkg_canonical/interface_manifest_fragment.json"
+    cp "${nested_manifest}" "${ctx}/share/fixture_pkg_nested/config/interface_manifest_fragment.json"
+    {
+        echo 'FROM scratch'
+        echo 'CMD ["true"]'
+        echo "COPY share/fixture_pkg_canonical/interface_manifest_fragment.json /opt/autoware/share/fixture_pkg_canonical/interface_manifest_fragment.json"
+        echo "COPY share/fixture_pkg_nested/config/interface_manifest_fragment.json /opt/autoware/share/fixture_pkg_nested/config/interface_manifest_fragment.json"
+    } >"${ctx}/Dockerfile"
+    docker build -t "${tag}" "${ctx}"
+    built_images+=("${tag}")
+}
 
 build_labeled "${TAG_PREFIX}provider" "${FIXTURES}/manifests/planning_trajectory_provider.json"
 build_labeled "${TAG_PREFIX}consumer-compatible" "${FIXTURES}/manifests/consumer_compatible.json"
 build_labeled "${TAG_PREFIX}consumer-incompatible" "${FIXTURES}/manifests/consumer_incompatible.json"
 build_labeled "${TAG_PREFIX}consumer-no-provider" "${FIXTURES}/manifests/consumer_no_provider.json"
 build_labeled "${TAG_PREFIX}qos-provider" "${FIXTURES}/manifests/qos_provider_best_effort.json"
+build_labeled "${TAG_PREFIX}consumer-qos-pivot" "${FIXTURES}/manifests/consumer_qos_above_pivot.json"
 build_unlabeled "${TAG_PREFIX}unlabeled"
 build_fragments_image "${TAG_PREFIX}fragment-provider" "${FIXTURES}/manifests/planning_trajectory_provider.json"
+build_multi_fragment_image "${TAG_PREFIX}multi-fragment" \
+    "${FIXTURES}/manifests/planning_trajectory_provider.json" \
+    "${FIXTURES}/manifests/consumer_no_provider.json"
 
 # ---- 4. Assert deploy_check.sh exit codes ---------------------------------------------------
 assert_exit() {
@@ -186,5 +233,19 @@ assert_exit_and_stderr 2 "${FIXTURES}/compose/compose.broken-config.yaml" "broke
     "docker compose -f" "DEPLOY_CHECK_SELF_TEST_MUST_BE_SET" "no images in"
 assert_exit 0 "${FIXTURES}/compose/compose.fragments.yaml" "fragments"
 assert_exit 1 "${FIXTURES}/compose/compose.qos-reject.yaml" "qos-reject"
+assert_exit 1 "${FIXTURES}/compose/compose.qos-pivot-consumer.yaml" "qos-pivot-consumer"
+assert_exit 1 "${FIXTURES}/compose/compose.multi-fragment.yaml" "multi-fragment-image"
+
+# ---- 5. Assert admit-tool-entrypoint.sh's own no-spec-manifest warning -----------------------
+# Run the spec-manifest-less tool image directly (bypassing deploy_check.sh) against a plain
+# fixture manifest, the same way deploy_check.sh itself invokes ADMIT_TOOL_IMAGE (workdir mounted
+# read-only at /in, manifest paths passed as positional arguments).
+echo "---- no-spec-manifest tool warning (expect stderr containing 'no spec manifest') ----------------------------------------------"
+no_spec_indir="$(mktemp -d "${workdir}/no_spec_in.XXXXXX")"
+cp "${FIXTURES}/manifests/planning_trajectory_provider.json" "${no_spec_indir}/manifest.json"
+no_spec_err="$(docker run --rm -v "${no_spec_indir}:/in:ro" "${NO_SPEC_TOOL_IMAGE}" /in/manifest.json 2>&1 >/dev/null)" || true
+echo "${no_spec_err}" | grep -qF -- "no spec manifest" ||
+    fail "no-spec-manifest tool warning: expected stderr to contain 'no spec manifest', got: ${no_spec_err}"
+log "OK no-spec-manifest tool warning: admit-tool-entrypoint.sh warned as expected"
 
 log "ALL ASSERTIONS PASSED"
