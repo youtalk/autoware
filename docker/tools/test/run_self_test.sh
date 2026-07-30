@@ -4,8 +4,8 @@
 # It builds a dedicated ADMIT_TOOL_IMAGE that contains manifest_admit from
 # autoware_component_interface_admission, builds a matrix of label-only fixture images (each
 # carrying a fixture interface manifest as the OCI label org.autoware.interface_manifest), and
-# asserts deploy_check.sh's exit code (and, for broken-config, its diagnostic message) on nine
-# composed image sets:
+# asserts deploy_check.sh's exit code (and, for broken-config and qos-pivot-consumer, its
+# diagnostic output) on nine composed image sets:
 #   compatible         -> 0 (accepted)
 #   incompatible       -> 1 (MAJOR mismatch)
 #   no-provider        -> 1 (required interface with no provider in the set)
@@ -18,7 +18,11 @@
 #                        interface_manifest_fragment.json and is still admitted)
 #   qos-reject         -> 1 (a provider's offered QoS ranks below the pivot registered in the
 #                        fixture spec manifest baked into the tool image)
-#   qos-pivot-consumer -> 1 (a consumer's required QoS ranks above that same pivot)
+#   qos-pivot-consumer -> 1 (a consumer's required QoS ranks above that same pivot; a
+#                        version-compatible provider whose own QoS meets the pivot is included so
+#                        NO_PROVIDER cannot also fire, leaving QOS_PIVOT_CONSUMER the only possible
+#                        cause — asserted by matching manifest_admit's verdict text, not just the
+#                        exit code)
 #   multi-fragment     -> 1 (one image carries two installed fragments at two different depths —
 #                        one at the documented path, one nested one level deeper the way the
 #                        install(DIRECTORY config ...) CMake trap would install it — and the
@@ -191,6 +195,7 @@ build_labeled "${TAG_PREFIX}consumer-incompatible" "${FIXTURES}/manifests/consum
 build_labeled "${TAG_PREFIX}consumer-no-provider" "${FIXTURES}/manifests/consumer_no_provider.json"
 build_labeled "${TAG_PREFIX}qos-provider" "${FIXTURES}/manifests/qos_provider_best_effort.json"
 build_labeled "${TAG_PREFIX}consumer-qos-pivot" "${FIXTURES}/manifests/consumer_qos_above_pivot.json"
+build_labeled "${TAG_PREFIX}qos-provider-at-pivot" "${FIXTURES}/manifests/qos_provider_at_pivot.json"
 build_unlabeled "${TAG_PREFIX}unlabeled"
 build_fragments_image "${TAG_PREFIX}fragment-provider" "${FIXTURES}/manifests/planning_trajectory_provider.json"
 build_multi_fragment_image "${TAG_PREFIX}multi-fragment" \
@@ -225,6 +230,24 @@ assert_exit_and_stderr() {
     log "OK ${name}: deploy_check exited ${rc} with the expected diagnostic"
 }
 
+# Like assert_exit, but also asserts the combined stdout+stderr output contains ${needle} -- used
+# for a case whose exit code alone has more than one structurally possible cause, where the point
+# of the assertion is to pin the failure down to the ONE verdict this case exists to exercise.
+# manifest_admit prints its per-pairing verdict lines (e.g. the QOS_PIVOT_CONSUMER text) to its own
+# stdout, not stderr (see manifest_admit_cli.cpp / manifest_admit.cpp in
+# autoware_component_interface_admission), and deploy_check.sh never separates that from its own
+# stdout, so stdout has to be captured too -- unlike assert_exit_and_stderr, which only ever needs
+# deploy_check.sh's own wrapper messages on stderr.
+assert_exit_and_output() {
+    local expected="$1" compose="$2" name="$3" needle="$4" rc=0 combined
+    echo "---- ${name} (expect exit ${expected}, output containing '${needle}') ----------------------------------------------"
+    combined="$("${DEPLOY_CHECK}" "${compose}" 2>&1)" || rc=$?
+    [ "${rc}" -eq "${expected}" ] || fail "${name}: expected exit ${expected}, got ${rc}"
+    echo "${combined}" | grep -qF -- "${needle}" ||
+        fail "${name}: expected output to contain '${needle}', got: ${combined}"
+    log "OK ${name}: deploy_check exited ${rc} with the expected verdict in its output"
+}
+
 assert_exit 0 "${FIXTURES}/compose/compose.compatible.yaml" "compatible-set"
 assert_exit 1 "${FIXTURES}/compose/compose.incompatible.yaml" "incompatible-set"
 assert_exit 1 "${FIXTURES}/compose/compose.no-provider.yaml" "no-provider-set"
@@ -233,7 +256,8 @@ assert_exit_and_stderr 2 "${FIXTURES}/compose/compose.broken-config.yaml" "broke
     "docker compose -f" "DEPLOY_CHECK_SELF_TEST_MUST_BE_SET" "no images in"
 assert_exit 0 "${FIXTURES}/compose/compose.fragments.yaml" "fragments"
 assert_exit 1 "${FIXTURES}/compose/compose.qos-reject.yaml" "qos-reject"
-assert_exit 1 "${FIXTURES}/compose/compose.qos-pivot-consumer.yaml" "qos-pivot-consumer"
+assert_exit_and_output 1 "${FIXTURES}/compose/compose.qos-pivot-consumer.yaml" "qos-pivot-consumer" \
+    "QOS pivot violation: consumer requests above the registered pivot"
 assert_exit 1 "${FIXTURES}/compose/compose.multi-fragment.yaml" "multi-fragment-image"
 
 # ---- 5. Assert admit-tool-entrypoint.sh's own no-spec-manifest warning -----------------------

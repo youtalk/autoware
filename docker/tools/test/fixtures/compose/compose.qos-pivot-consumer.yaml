@@ -1,8 +1,15 @@
-# QoS pivot rejection, consumer side: a lone consumer requires transient_local durability for an
+# QoS pivot rejection, consumer side: a consumer requires transient_local durability for an
 # interface whose registered pivot (the fixture spec manifest baked into the tool image at
-# /opt/autoware/interface_manifest.json) is volatile. The pivot check is per-endpoint, so this
-# single subscriber-only image is enough to reject (exit 1) -- no provider is needed for the
-# violation to be checkable.
+# /opt/autoware/interface_manifest.json) is volatile. The pivot check is per-endpoint, so it would
+# still be checkable with the consumer alone -- but a required interface with NO provider anywhere
+# in the set independently triggers NO_PROVIDER (see compose.no-provider.yaml), which would also
+# produce exit 1 and make this case pass regardless of whether the pivot check does anything at
+# all. A version-compatible provider for the same interface is included so NO_PROVIDER is
+# structurally impossible here; its own offered QoS also meets the pivot (reliable / volatile), so
+# it cannot trip QOS_PIVOT_PROVIDER either. QOS_PIVOT_CONSUMER is therefore the only possible
+# source of the non-zero exit.
 services:
   consumer:
     image: autoware-admission-self-test-consumer-qos-pivot
+  provider:
+    image: autoware-admission-self-test-qos-provider-at-pivot
