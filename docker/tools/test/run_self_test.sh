@@ -11,8 +11,9 @@
 #   no-provider   -> 1 (required interface with no provider in the set)
 #   unlabeled     -> 2 (a present image lacks the conformance label AND carries no installed
 #                    interface manifest fragment)
-#   broken-config -> 2 (`docker compose config` itself fails, e.g. a missing env_file — must be
-#                    reported as a compose failure, not misreported as "no images")
+#   broken-config -> 2 (`docker compose config` itself fails, e.g. an unset required interpolation
+#                    variable — must be reported as a compose failure, not misreported as "no
+#                    images")
 #   fragments     -> 0 (a label-less image falls back to its installed
 #                    interface_manifest_fragment.json and is still admitted)
 #   qos-reject    -> 1 (a provider's offered QoS ranks below the pivot registered in the fixture
@@ -158,16 +159,19 @@ assert_exit() {
     log "OK ${name}: deploy_check exited ${rc} as expected"
 }
 
-# Like assert_exit, but also asserts the stderr diagnostic contains ${needle} and does NOT contain
-# ${must_not_contain} — used for the broken-config case, where the exit code alone (2) can't tell a
-# genuine `docker compose config` failure apart from the "no images" case it used to be misreported
-# as; the message has to be checked too.
+# Like assert_exit, but also asserts the stderr diagnostic contains BOTH ${needle} (deploy_check's
+# own wrapper message) AND ${needle2} (the underlying tool's own failure signature, so the
+# assertion actually proves the intended failure mode fired, not just that *some* exit-2 happened)
+# and does NOT contain ${must_not_contain} — used for the broken-config case, where the exit code
+# alone (2) can't tell a genuine `docker compose config` failure apart from the "no images" case it
+# used to be misreported as; the message has to be checked too.
 assert_exit_and_stderr() {
-    local expected="$1" compose="$2" name="$3" needle="$4" must_not_contain="$5" rc=0 err
-    echo "---- ${name} (expect exit ${expected}, stderr containing '${needle}') ----------------------------------------------"
+    local expected="$1" compose="$2" name="$3" needle="$4" needle2="$5" must_not_contain="$6" rc=0 err
+    echo "---- ${name} (expect exit ${expected}, stderr containing '${needle}' and '${needle2}') ----------------------------------------------"
     err="$("${DEPLOY_CHECK}" "${compose}" 2>&1 >/dev/null)" || rc=$?
     [ "${rc}" -eq "${expected}" ] || fail "${name}: expected exit ${expected}, got ${rc}"
     echo "${err}" | grep -qF -- "${needle}" || fail "${name}: expected stderr to contain '${needle}', got: ${err}"
+    echo "${err}" | grep -qF -- "${needle2}" || fail "${name}: expected stderr to contain '${needle2}', got: ${err}"
     if [ -n "${must_not_contain}" ] && echo "${err}" | grep -qF -- "${must_not_contain}"; then
         fail "${name}: stderr wrongly contains '${must_not_contain}' (misdiagnosed), got: ${err}"
     fi
@@ -179,7 +183,7 @@ assert_exit 1 "${FIXTURES}/compose/compose.incompatible.yaml" "incompatible-set"
 assert_exit 1 "${FIXTURES}/compose/compose.no-provider.yaml" "no-provider-set"
 assert_exit 2 "${FIXTURES}/compose/compose.unlabeled.yaml" "unlabeled-image"
 assert_exit_and_stderr 2 "${FIXTURES}/compose/compose.broken-config.yaml" "broken-config" \
-    "docker compose -f" "no images in"
+    "docker compose -f" "DEPLOY_CHECK_SELF_TEST_MUST_BE_SET" "no images in"
 assert_exit 0 "${FIXTURES}/compose/compose.fragments.yaml" "fragments"
 assert_exit 1 "${FIXTURES}/compose/compose.qos-reject.yaml" "qos-reject"
 
