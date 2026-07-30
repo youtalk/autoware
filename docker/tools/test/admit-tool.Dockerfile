@@ -6,10 +6,10 @@
 # runs THIS image (ADMIT_TOOL_IMAGE) — never an image under test — so the admission binary is always
 # trusted, independent of the images it inspects.
 #
-# BUILD_BASE_IMAGE must provide autoware_cmake + nlohmann_json (autoware:universe-devel-jazzy, whose
+# BUILD_BASE_IMAGE must provide autoware_cmake + nlohmann_json (autoware:core-devel-jazzy, whose
 # Autoware overlay lives at /opt/autoware, is the reference). run_self_test.sh selects the local tag
 # for the developer loop and the GHCR tag for the CI clone.
-ARG BUILD_BASE_IMAGE=ghcr.io/autowarefoundation/autoware:universe-devel-jazzy
+ARG BUILD_BASE_IMAGE=ghcr.io/autowarefoundation/autoware:core-devel-jazzy
 ARG RUNTIME_BASE_IMAGE=ros:jazzy-ros-base
 
 FROM ${BUILD_BASE_IMAGE} AS build
@@ -29,4 +29,8 @@ FROM ${RUNTIME_BASE_IMAGE} AS runtime
 COPY --from=build /ws/install /opt/admission/install
 COPY entrypoint.sh /usr/local/bin/admit-tool-entrypoint.sh
 RUN chmod +x /usr/local/bin/admit-tool-entrypoint.sh
+# The fixture spec manifest (autoware_component_interface_specs' pivot document shape), so the
+# self-test exercises the same --spec-manifest wiring a real tool image would carry. See
+# admit-tool-entrypoint.sh, which prepends --spec-manifest only when this file is present.
+COPY interface_manifest.json /opt/autoware/interface_manifest.json
 ENTRYPOINT ["/usr/local/bin/admit-tool-entrypoint.sh"]

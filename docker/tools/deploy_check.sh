@@ -3,12 +3,20 @@
 # an interface mismatch across a composed image set can be caught, because it runs before any
 # container in the set is created or started.
 #
-# Given a docker-compose file, resolve the image set it selects, read each image's baked interface
-# manifest from the OCI label org.autoware.interface_manifest via `docker inspect` (pure image
-# metadata — no container is created or started, and no source need be present in the image, so a
-# binary-only third-party image works), then run the SAME admission rule the runtime handshake uses
-# (manifest_admit / evaluate_deploy) over the whole set. A non-zero exit BLOCKS the deploy / OTA
-# assembly BEFORE `docker compose up`.
+# Given a docker-compose file, resolve the image set it selects, then read each image's interface
+# manifest(s) with NO container ever started (only `docker inspect` / `docker create` + `docker cp`
+# against the image, so a binary-only third-party image works):
+#
+#   - Primary: the OCI label org.autoware.interface_manifest, read via `docker inspect`.
+#   - Fallback: for an image with no such label, the interface_manifest_fragment.json file(s)
+#     installed under /opt/autoware/share/<pkg>/ by every package that registers interfaces
+#     through autoware_component_interface_utils. A container is created from the image to let
+#     `docker cp` read its filesystem, but it is NEVER started -- the fallback is exactly as
+#     boot-free as the label path.
+#
+# Either way, the SAME admission rule the runtime handshake uses (manifest_admit / evaluate_deploy)
+# then runs over the whole set. A non-zero exit BLOCKS the deploy / OTA assembly BEFORE
+# `docker compose up`.
 #
 # manifest_admit runs from a dedicated tool image (ADMIT_TOOL_IMAGE), NEVER from an image under
 # test. That image's entrypoint must run manifest_admit with the ROS overlay sourced, taking the
@@ -21,9 +29,11 @@
 #
 # Exit codes (mirrors manifest_admit):
 #   0  every required interface is satisfied by a compatible provider
-#   1  at least one admission rejection (MAJOR / MINOR / TOPIC mismatch or NO_PROVIDER)
+#   1  at least one admission rejection (MAJOR / MINOR / TOPIC mismatch, NO_PROVIDER, or a QoS
+#      pivot / pairing violation)
 #   2  operational error (`docker compose config` failed, no images, `docker inspect` failed, an
-#      image lacks the label, or the admission tool could not be run)
+#      image has neither the label nor any installed manifest fragment, or the admission tool could
+#      not be run)
 set -euo pipefail
 
 COMPOSE_FILE="${1:?usage: deploy_check.sh <compose-file>}"
@@ -66,11 +76,34 @@ for img in "${images[@]}"; do
         exit 2
     fi
     if [ -z "${manifest}" ] || [ "${manifest}" = "<no value>" ]; then
-        echo "deploy_check: image ${img} has no ${LABEL} label — not IF-versioning conformant" >&2
-        exit 2
+        echo "[deploy_check] ${img}: no ${LABEL} label - falling back to installed manifest fragments"
+        if ! cid="$(docker create "${img}" 2>"${workdir}/create_err")"; then
+            echo "deploy_check: 'docker create ${img}' failed" >&2
+            sed 's/^/  docker: /' "${workdir}/create_err" >&2
+            exit 2
+        fi
+        # The container is created but NEVER started: docker cp reads the image filesystem.
+        if ! docker cp "${cid}:/opt/autoware/share" "${workdir}/share_${i}" 2>"${workdir}/cp_err"; then
+            docker rm -f "${cid}" >/dev/null
+            echo "deploy_check: image ${img} has neither the ${LABEL} label nor /opt/autoware/share - not IF-versioning conformant" >&2
+            exit 2
+        fi
+        docker rm -f "${cid}" >/dev/null
+        found=0
+        while IFS= read -r frag; do
+            cp "${frag}" "${workdir}/manifest_${i}_${found}.json"
+            admit_args+=("/in/manifest_${i}_${found}.json")
+            found=$((found + 1))
+        done < <(find "${workdir}/share_${i}" -maxdepth 2 -name interface_manifest_fragment.json | sort)
+        if [ "${found}" -eq 0 ]; then
+            echo "deploy_check: image ${img} carries no interface manifest fragments" >&2
+            exit 2
+        fi
+        echo "[deploy_check] ${img}: ${found} fragment manifest(s)"
+    else
+        printf '%s' "${manifest}" >"${workdir}/manifest_${i}.json"
+        admit_args+=("/in/manifest_${i}.json")
     fi
-    printf '%s' "${manifest}" >"${workdir}/manifest_${i}.json"
-    admit_args+=("/in/manifest_${i}.json")
     i=$((i + 1))
 done
 

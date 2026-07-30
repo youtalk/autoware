@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Entrypoint of the deploy-time admission tool image (ADMIT_TOOL_IMAGE, built by admit-tool.Dockerfile).
 # Sources the ROS environment plus the admission install overlay, then runs manifest_admit over the
-# manifest JSON files passed as arguments. The process is replaced with manifest_admit (exec), so the
-# container exit status is manifest_admit's own — 0 accepted / 1 rejection / 2 operational error —
-# which deploy_check.sh propagates verbatim.
+# manifest JSON files passed as arguments. When the tool image carries a spec manifest at
+# /opt/autoware/interface_manifest.json (autoware_component_interface_specs' pivot document), it is
+# prepended as --spec-manifest so the QoS pivot verdicts are enforced; a tool image without one
+# still runs the version-only admission rule. The process is replaced with manifest_admit (exec), so
+# the container exit status is manifest_admit's own — 0 accepted / 1 rejection / 2 operational
+# error — which deploy_check.sh propagates verbatim.
 # The ROS / ament setup scripts reference variables that may be unset, so `set -u` is intentionally
 # NOT enabled here; `set -e` still aborts on a genuine sourcing failure.
 set -e
@@ -13,4 +16,9 @@ source /opt/ros/jazzy/setup.bash
 # shellcheck source=/dev/null
 source /opt/admission/install/setup.bash
 
-exec ros2 run autoware_component_interface_admission manifest_admit "$@"
+manifest_admit_args=()
+if [ -f /opt/autoware/interface_manifest.json ]; then
+    manifest_admit_args+=(--spec-manifest /opt/autoware/interface_manifest.json)
+fi
+
+exec ros2 run autoware_component_interface_admission manifest_admit "${manifest_admit_args[@]}" "$@"
