@@ -29,8 +29,9 @@
 #
 # Exit codes (mirrors manifest_admit):
 #   0  every required interface is satisfied by a compatible provider
-#   1  at least one admission rejection (MAJOR / MINOR / TOPIC mismatch, NO_PROVIDER, or a QoS
-#      pivot / pairing violation)
+#   1  at least one admission rejection (MAJOR / MINOR mismatch, NO_PROVIDER, or a QoS pivot /
+#      pairing violation) -- a TOPIC mismatch is a remap-time condition and is never seen here; it
+#      is only ever raised by the runtime trigger (see docker/tools/README.md)
 #   2  operational error (`docker compose config` failed, no images, `docker inspect` failed, an
 #      image has neither the label nor any installed manifest fragment, or the admission tool could
 #      not be run)
@@ -56,6 +57,10 @@ if ! docker compose -f "${COMPOSE_FILE}" config --images \
     sed 's/^/  docker compose: /' "${workdir}/compose_err" >&2
     exit 2
 fi
+# Pre-declare as an empty array: under `set -u`, some older bash builds leave `images` unset
+# rather than empty when the process substitution produces zero lines, and the `${#images[@]}`
+# check just below would then fail on an unbound variable instead of reporting "no images" cleanly.
+declare -a images=()
 mapfile -t images < <(sort -u "${compose_images_file}")
 if [ "${#images[@]}" -eq 0 ]; then
     echo "deploy_check: no images in ${COMPOSE_FILE}" >&2
@@ -99,7 +104,15 @@ for img in "${images[@]}"; do
             cp "${frag}" "${workdir}/manifest_${i}_${found}.json"
             admit_args+=("/in/manifest_${i}_${found}.json")
             found=$((found + 1))
-        done < <(find "${workdir}/share_${i}" -maxdepth 2 -name interface_manifest_fragment.json | sort)
+            # No -maxdepth here: a fragment installed one level deeper than the documented
+            # share/<pkg>/interface_manifest_fragment.json path (e.g. via the CMake trap
+            # install(DIRECTORY config DESTINATION share/${PROJECT_NAME}), which lands it at
+            # share/<pkg>/config/interface_manifest_fragment.json instead -- see
+            # autoware_component_interface_utils' README) must still be discovered. Silently missing it
+            # would drop a real provider or required entry from evaluation, which can suppress a
+            # NO_PROVIDER verdict the gate exists to catch; the filename is specific enough that an
+            # unbounded search does not risk a false-positive collision.
+        done < <(find "${workdir}/share_${i}" -name interface_manifest_fragment.json | sort)
         if [ "${found}" -eq 0 ]; then
             echo "deploy_check: image ${img} carries no interface manifest fragments" >&2
             exit 2
