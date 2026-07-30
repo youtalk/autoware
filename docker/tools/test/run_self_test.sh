@@ -241,9 +241,9 @@ assert_exit 1 "${FIXTURES}/compose/compose.multi-fragment.yaml" "multi-fragment-
 # fixture manifest, the same way deploy_check.sh itself invokes ADMIT_TOOL_IMAGE (workdir mounted
 # read-only at /in, manifest paths passed as positional arguments).
 echo "---- no-spec-manifest tool warning (expect stderr containing 'no spec manifest') ----------------------------------------------"
-no_spec_indir="$(mktemp -d "${workdir}/no_spec_in.XXXXXX")"
-cp "${FIXTURES}/manifests/planning_trajectory_provider.json" "${no_spec_indir}/manifest.json"
-no_spec_err="$(docker run --rm -v "${no_spec_indir}:/in:ro" "${NO_SPEC_TOOL_IMAGE}" /in/manifest.json 2>&1 >/dev/null)" || true
+no_spec_in_dir="$(mktemp -d "${workdir}/no_spec_in.XXXXXX")"
+cp "${FIXTURES}/manifests/planning_trajectory_provider.json" "${no_spec_in_dir}/manifest.json"
+no_spec_err="$(docker run --rm -v "${no_spec_in_dir}:/in:ro" "${NO_SPEC_TOOL_IMAGE}" /in/manifest.json 2>&1 >/dev/null)" || true
 echo "${no_spec_err}" | grep -qF -- "no spec manifest" ||
     fail "no-spec-manifest tool warning: expected stderr to contain 'no spec manifest', got: ${no_spec_err}"
 log "OK no-spec-manifest tool warning: admit-tool-entrypoint.sh warned as expected"
