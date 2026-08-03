@@ -28,9 +28,11 @@ ansible-playbook autoware.dev_env.install_dev_env --extra-vars "use_locked_versi
 
 ```bash
 ansible-playbook autoware.dev_env.install_nvidia \
-  --extra-vars "use_locked_versions=true cuda_version=12.8 tensorrt_version=10.8.0.43-1+cuda12.8" \
+  --extra-vars "rosdistro=jazzy use_locked_versions=true cuda_version=12.8 tensorrt_version=10.8.0.43-1+cuda12.8" \
   --extra-vars "nvidia_lockfile_path=/path/to/locked-nvidia-ubuntu2404-cuda12.8-amd64.yaml"
 ```
+
+`rosdistro` is required even though the closure does not depend on it: unlike `install_dev_env`, the `install_nvidia` playbook does not define it, and `lockfile_path` — loaded before `nvidia_lockfile_path` is consulted — interpolates it. (`base-cuda.Dockerfile` passes it, which is why the Docker path needs no such note.)
 
 The file needs only a top-level `nvidia_pins` mapping, in the same format as a lockfile's, and is produced the same way (`emit_nvidia_pins.py`, see below). It **replaces** `nvidia_pins` rather than merging into it, and `verify.yaml` then checks the substituted closure, so the pins stay exact and the freeze is unchanged — only the source file moves.
 
@@ -77,9 +79,11 @@ tell an NVIDIA-repo package from an Ubuntu-archive one. On a machine that has ju
 completed an **unlocked** `install_nvidia`, run:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y python3-apt python3-yaml   # the script imports both
+sudo apt-get update && sudo apt-get install -y python3-yaml   # the only non-stdlib import
 ./ansible/scripts/emit_nvidia_pins.py ansible/vars/locked-versions-<rosdistro>-<arch>.yaml
 ```
+
+Unlike the `files/*.py` the role runs, this script needs no `python3-apt`: it shells out to `apt-get indextargets`, `apt-helper cat-file` and `dpkg-query` rather than using the apt bindings.
 
 <!-- cspell:ignore indextargets -->
 
@@ -151,10 +155,11 @@ report either of them:
 
 - **Third-party apt repositories.** The check only reports packages whose
   installed version carries `Origin: Ubuntu`, so a package from any other
-  origin passes silently. There are two live cases, both installed top-level
+  origin passes silently. There are three live cases, all installed top-level
   with `state: present` and covered by none of `ros_snapshot_date`,
-  `apt_pins`, `nvidia_pins`, or `pip_pins`. `agnocast` installs its heaphook
-  package from a Launchpad PPA (`Origin: LP-PPA-...`). `cuda` installs the
+  `apt_pins`, `nvidia_pins`, or `pip_pins`. `agnocast` installs two packages
+  from a Launchpad PPA (`Origin: LP-PPA-...`): its heaphook package, and
+  `agnocast_kmod_package` on any non-container host. `cuda` installs the
   `nvidia-open` driver metapackage from NVIDIA's apt repository
   (`developer.download.nvidia.com`) when `cuda_install_drivers=true`;
   `nvidia_pins` freezes the CUDA toolkit and TensorRT packages that role names
