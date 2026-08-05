@@ -19,11 +19,11 @@ repositories:
   core/autoware_internal_msgs:
     type: git
     url: https://github.com/autowarefoundation/autoware_internal_msgs.git
-    version: 1.14.0
+    version: 1.15.0
   core/autoware_cmake:
     type: git
     url: https://github.com/autowarefoundation/autoware_cmake.git
-    version: 1.2.0
+    version: 1.4.0
   core/autoware_utils:
     type: git
     url: https://github.com/autowarefoundation/autoware_utils.git
@@ -96,10 +96,6 @@ repositories:
   universe/external/bevdet_vendor: # TODO: wrap the original bevdet-tensorrt-cpp source code as a vendor package and provide it to autoware_tensorrt_bevdet package
     type: git
     url: https://github.com/autowarefoundation/bevdet_vendor.git
-    version: 0.1.0
-  universe/external/trt_batched_nms:
-    type: git
-    url: https://github.com/autowarefoundation/trt_batched_nms.git
     version: 0.1.0
   universe/external/cuda_blackboard:
     type: git
